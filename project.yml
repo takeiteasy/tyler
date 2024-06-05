@@ -1,0 +1,39 @@
+name: tyler
+
+options:
+  bundleIdPrefix: io.github.takeiteasy
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+
+settings:
+  GCC_C_LANGUAGE_STANDARD: c11
+  CLANG_WARN_DOCUMENTATION_COMMENTS: false
+
+targets:
+  tyler:
+    type: tool
+    platform: macOS
+    sources:
+        - path: src/
+        - path: build/
+          type: folder
+        - path: deps/
+          type: folder
+        - path: assets/
+          type: folder
+        - path: README.md
+        - path: project.yml
+        - path: Makefile
+    dependencies:
+        - sdk: Cocoa.framework
+        - sdk: Metal.framework
+        - sdk: MetalKit.framework
+        - sdk: Quartz.framework
+    settings:
+        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps,
+                              $(PROJECT_DIR)/deps/sokol_helpers,
+                              $(PROJECT_DIR)/src]
+        OTHER_CFLAGS: [-x objective-c,
+                       -DSOKOL_METAL,
+                       -fobjc-arc]

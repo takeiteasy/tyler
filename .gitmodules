@@ -1,0 +1,3 @@
+[submodule "deps/sokol_helpers"]
+	path = deps/sokol_helpers
+	url = git@github.com:takeiteasy/sokol_helpers.git
