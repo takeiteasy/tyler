@@ -11,6 +11,19 @@ settings:
   CLANG_WARN_DOCUMENTATION_COMMENTS: false
 
 targets:
+  cimgui:
+    type: library.dynamic
+    platform: macOS
+    sources:
+        - path: deps/cimgui
+          includes:
+            - "cimgui.*"
+        - path: deps/cimgui/imgui/
+          includes:
+            - "*.cpp"
+    settings:
+        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps/cimgui,
+                              $(PROJECT_DIR)/deps/cimgui/imgui]
   tyler:
     type: tool
     platform: macOS
@@ -26,6 +39,7 @@ targets:
         - path: project.yml
         - path: Makefile
     dependencies:
+        - target: cimgui
         - sdk: Cocoa.framework
         - sdk: Metal.framework
         - sdk: MetalKit.framework
@@ -33,7 +47,9 @@ targets:
     settings:
         HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps,
                               $(PROJECT_DIR)/deps/sokol_helpers,
-                              $(PROJECT_DIR)/src]
+                              $(PROJECT_DIR)/src,
+                              $(PROJECT_DIR)/deps/cimgui,
+                              $(PROJECT_DIR)/deps/cimgui/imgui]
         OTHER_CFLAGS: [-x objective-c,
                        -DSOKOL_METAL,
                        -fobjc-arc]
