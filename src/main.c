@@ -68,8 +68,8 @@ static struct {
         Texture default_2x2;
         Texture default_3x3;
         Texture *currentAtlas;
+        sg_image cross;
         TileBitmask *currentBitmask;
-        Texture numberAtlas;
     } mask;
     struct {
         Tile grid[64*64];
@@ -81,8 +81,8 @@ static struct {
 } state;
 
 static void InitMap(void) {
-    state.map.width = 64;
-    state.map.height = 64;
+    state.map.width = 32;
+    state.map.height = 32;
     memset(state.map.grid, 0, state.map.width*state.map.height*sizeof(Tile));
 }
 
@@ -93,7 +93,7 @@ static void DestroyMap(void) {
 static void InitMaskEditor(void) {
     state.mask.default_2x2.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_2x2.png", &state.mask.default_2x2.width, &state.mask.default_2x2.height);
     state.mask.default_3x3.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_3x3.png", &state.mask.default_3x3.width, &state.mask.default_3x3.height);
-    state.mask.numberAtlas.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/hex.png", &state.mask.numberAtlas.width, &state.mask.numberAtlas.height);
+    state.mask.cross = sg_load_texture_path("/Users/george/git/tyler/assets/x.png");
     state.mask.currentAtlas = &state.mask.default_3x3;
     
     state.mask.open = true;
@@ -122,8 +122,8 @@ static void DestroyMaskEditor(void) {
         free(state.mask.grid);
 }
 
-int is_point_inside_rect(sgp_rect r, int x, int y) {
-  return (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+int IsPointInRect(sgp_rect r, int x, int y) {
+  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
 static void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color) {
@@ -154,39 +154,43 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_reset_image(0);
     
     int mx = sapp_cursor_x(), my = sapp_cursor_y();
-    if (is_point_inside_rect((sgp_rect){cx, cy, cw, ch}, mx, my)) {
+    if (IsPointInRect((sgp_rect){cx, cy, cw, ch}, mx, my)) {
         int gw = state.mask.spriteW*state.mask.scale;
         int gh = state.mask.spriteH*state.mask.scale;
         int gx = (mx - cx)/gw;
         int gy = (my - cy)/gh;
-        int ox = gx * gw;
-        int oy = gy * gh;
-        DrawMaskEditorBox(ox, oy, gw, gh, (sg_color){1.f, 1.f, 1.f, 1.f});
+        int ox = MAX(gx * gw, 1);
+        int oy = MAX(gy * gh, 1);
+        int dx = ox + gw >= cw ? gw-2 : gw;
+        int dy = oy + gh >= ch ? gh-2 : gh;
+        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 1.f, 1.f, 1.f});
     }
     
     if (state.mask.currentBitmask != NULL) {
         int gw = state.mask.spriteW*state.mask.scale;
         int gh = state.mask.spriteH*state.mask.scale;
-        float ox = state.mask.currentBitmask->x * gw;
-        float oy = state.mask.currentBitmask->y * gh;
-        DrawMaskEditorBox(ox, oy, gw, gh, (sg_color){1.f, 0.f, 0.f, 1.f});
+        float ox = MAX(state.mask.currentBitmask->x * gw, 1);
+        float oy = MAX(state.mask.currentBitmask->y * gh, 1);
+        int dx = ox + gw >= cw ? gw-2 : gw;
+        int dy = oy + gh >= ch ? gh-2 : gh;
+        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 0.f, 0.f, 1.f});
     }
     
-    sgp_set_image(0, state.mask.numberAtlas.texture);
-    for (int x = 0, i = 0; x < state.mask.spriteX; x++)
+    sgp_set_image(0, state.mask.cross);
+    for (int x = 0; x < state.mask.spriteX; x++)
         for (int y = 0; y < state.mask.spriteY; y++) {
             float dx = ((x * state.mask.spriteW)*state.mask.scale);
             float dy = ((y * state.mask.spriteH)*state.mask.scale);
-            char buf[8];
-            snprintf(buf, 8, "%x", i);
-            for (int j = 0; j < 8; j++) {
-                char p = buf[j];
-                if (p == '\0')
-                    break;
-                sgp_rect dst = {dx+(j*8), dy, state.mask.spriteW, state.mask.spriteH};
-                sgp_rect src = {i++ * 8, 0, 8, 8};
-                sgp_draw_textured_rect(0, dst, src);
-            }
+            int gw = state.mask.spriteW*state.mask.scale;
+            int gh = state.mask.spriteH*state.mask.scale;
+            float ex = gw/3, ey = gh/3;
+            for (int yy = 0; yy < 3; yy++)
+                for (int xx = 0; xx < 3; xx++)
+                    if (!(xx == 1 && yy == 1) && state.mask.grid[y * state.mask.spriteX + x].grid[yy * 3 + xx]) {
+                        sgp_rect dst = {dx+(yy*ey)+2, dy+(xx*ex)+2, state.mask.spriteW, state.mask.spriteH};
+                        sgp_rect src = {0, 0, 8, 8};
+                        sgp_draw_textured_rect(0, dst, src);
+                    }
         }
     sgp_reset_image(0);
     sgp_flush();
@@ -277,8 +281,13 @@ static void frame(void) {
     sgp_viewport(0, 0, width, height);
     sgp_project(0.f, width, 0, height);
     
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) && sapp_is_button_down(SAPP_MOUSEBUTTON_LEFT)) {
+        state.camera.x -= sapp_cursor_delta_x();
+        state.camera.y -= sapp_cursor_delta_y();
+    }
+
     sgp_push_transform();
-    sgp_translate((width/2), (height/2));
+    sgp_translate((width/2)-state.camera.x, (height/2)-state.camera.y);
     sgp_set_color(1.f, 1.f, 1.f, 1.f);
     for (int x = 0; x < state.map.width+1; x++) {
         float xx = x * state.mask.spriteW * state.mask.scale;
@@ -298,6 +307,7 @@ static void frame(void) {
     sgp_end();
     sg_end_pass();
     sg_commit();
+    sokol_input_update();
 }
 
 static void init(void) {
