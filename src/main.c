@@ -1,4 +1,3 @@
-#include "map.h"
 #define SOKOL_HELPER_IMPL
 #include "sokol_helpers/sokol_input.h"
 #include "sokol_helpers/sokol_img.h"
@@ -55,6 +54,10 @@ static uint8_t Bitmask(TileBitmask *mask) {
     return result;
 }
 
+typedef struct {
+    // ...
+} Tile;
+
 static struct {
     struct {
         TileBitmask *grid;
@@ -68,8 +71,24 @@ static struct {
         TileBitmask *currentBitmask;
         Texture numberAtlas;
     } mask;
-    Map map;
+    struct {
+        Tile grid[64*64];
+        int width, height;
+    } map;
+    struct {
+        float x, y, zoom;
+    } camera;
 } state;
+
+static void InitMap(void) {
+    state.map.width = 64;
+    state.map.height = 64;
+    memset(state.map.grid, 0, state.map.width*state.map.height*sizeof(Tile));
+}
+
+static void DestroyMap(void) {
+    // ...
+}
 
 static void InitMaskEditor(void) {
     state.mask.default_2x2.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_2x2.png", &state.mask.default_2x2.width, &state.mask.default_2x2.height);
@@ -171,7 +190,6 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
         }
     sgp_reset_image(0);
     sgp_flush();
-    sgp_end();
 }
 
 static void frame(void) {
@@ -257,17 +275,22 @@ static void frame(void) {
     }
     
     sgp_viewport(0, 0, width, height);
-    float ratio = width/(float)height;
-    sgp_project(-ratio, ratio, 1.0f, -1.0f);
-    float time = sapp_frame_count() * sapp_frame_duration();
-    float r = sinf(time)*0.5+0.5, g = cosf(time)*0.5+0.5;
+    sgp_project(0.f, width, 0, height);
+    
     sgp_push_transform();
-    sgp_set_color(r, g, 0.3f, 1.0f);
-    sgp_rotate_at(time, 0.0f, 0.0f);
-    sgp_draw_filled_rect(-0.5f, -0.5f, 1.0f, 1.0f);
-    sgp_pop_transform();
+    sgp_translate((width/2), (height/2));
+    sgp_set_color(1.f, 1.f, 1.f, 1.f);
+    for (int x = 0; x < state.map.width+1; x++) {
+        float xx = x * state.mask.spriteW * state.mask.scale;
+        sgp_draw_line(xx, 0, xx, (state.mask.spriteH*state.map.height)*state.mask.scale);
+        for (int y = 0; y < state.map.height+1; y++) {
+            float yy = y * state.mask.spriteH * state.mask.scale;
+            sgp_draw_line(0, yy, (state.mask.spriteW*state.map.width)*state.mask.scale, yy);
+        }
+    }
     sgp_reset_color();
-
+    sgp_pop_transform();
+    
     sg_pass pass = {.swapchain = sglue_swapchain()};
     sg_begin_pass(&pass);
     sgp_flush();
@@ -303,7 +326,7 @@ static void init(void) {
     stm_setup();
     
     InitMaskEditor();
-    InitMap(&state.map, 64, 64);
+    InitMap();
 }
 
 static void input(const sapp_event *e) {
@@ -312,7 +335,7 @@ static void input(const sapp_event *e) {
 }
 
 static void cleanup(void) {
-    DestroyMap(&state.map);
+    DestroyMap();
     DestroyMaskEditor();
     sgp_shutdown();
     simgui_shutdown();
