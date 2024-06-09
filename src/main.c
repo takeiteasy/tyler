@@ -19,37 +19,10 @@ typedef struct {
     int width, height;
 } Texture;
 
-enum {
-    TILE_MASK_TL = 0,
-    TILE_MASK_T,
-    TILE_MASK_TR,
-    TILE_MASK_L,
-    TILE_MASK_IGNORE,
-    TILE_MASK_R,
-    TILE_MASK_BL,
-    TILE_MASK_B,
-    TILE_MASK_BR
-};
-
 typedef struct {
     bool grid[9];
     int x, y;
 } TileBitmask;
-
-static uint8_t Bitmask(TileBitmask *mask) {
-#define CHECK_CORNER(N, A, B) \
-    mask->grid[(N)] = !mask->grid[(A)] && !mask->grid[(B)] ? false : mask->grid[(N)];
-    CHECK_CORNER(0, 1, 3);
-    CHECK_CORNER(2, 1, 5);
-    CHECK_CORNER(6, 7, 3);
-    CHECK_CORNER(8, 7, 5);
-    uint8_t result = 0;
-    for (int y = 0, n = 0; y < 3; y++)
-        for (int x = 0; x < 3; x++, n++)
-            if (!(y == 1 && x == 1))
-                result += (mask->grid[y * 3 + x] << n);
-    return result;
-}
 
 typedef struct {
     bool on;
@@ -108,7 +81,7 @@ static void InitMaskEditor(void) {
     for (int x = 0; x < state.mask.spriteX; x++)
         for (int y = 0; y < state.mask.spriteY; y++) {
             TileBitmask *mask = &state.mask.grid[y * state.mask.spriteX + x];
-            mask->grid[TILE_MASK_IGNORE] = true;
+            memset(mask->grid, 0, sizeof(bool) * 9);
             mask->x = x;
             mask->y = y;
         }
@@ -186,7 +159,7 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
             float ex = gw/3, ey = gh/3;
             for (int yy = 0; yy < 3; yy++)
                 for (int xx = 0; xx < 3; xx++)
-                    if (!(xx == 1 && yy == 1) && state.mask.grid[y * state.mask.spriteX + x].grid[yy * 3 + xx]) {
+                    if (state.mask.grid[y * state.mask.spriteX + x].grid[yy * 3 + xx]) {
                         sgp_rect dst = {dx+(yy*ey)+2, dy+(xx*ex)+2, state.mask.spriteW, state.mask.spriteH};
                         sgp_rect src = {0, 0, 8, 8};
                         sgp_draw_textured_rect(0, dst, src);
@@ -196,6 +169,14 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_flush();
 }
 
+static uint8_t Bitmask(TileBitmask *mask) {
+    uint8_t result = 0;
+    for (int y = 0, n = 0; y < 3; y++)
+        for (int x = 0; x < 3; x++)
+            if (!(y == 1 && x == 1))
+                result += (mask->grid[y * 3 + x] << n++);
+    return result;
+}
 
 static void UpdateMap(void) {
     for (int x = 0; x < state.map.width; x++) {
@@ -267,29 +248,25 @@ static void frame(void) {
             if (state.mask.currentBitmask) {
                 maskEditSize.y += 10;
                 if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                    igText("Tile (%d,%d)", state.mask.currentBitmask->x, state.mask.currentBitmask->y);
+                    uint8_t bitmask = Bitmask(state.mask.currentBitmask);
+                    char buf[9];
+                    for (int i = 0; i < 8; i++)
+                        buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
+                    buf[8] = '\0';
+                    igText("tile: %d, %d - mask: %d,0x%x,0b%s", state.mask.currentBitmask->x, state.mask.currentBitmask->y, bitmask, bitmask, buf);
                     if (igBeginTable("button_grid", 3, ImGuiTableFlags_NoBordersInBody, maskEditSize, gw)) {
-                        for (int x = 0; x < 3; x++) {
+                        for (int y = 0; y < 3; y++) {
                             igTableNextRow(ImGuiTableRowFlags_None, gh);
-                            for (int y = 0; y < 3; y++) {
-                                igTableSetColumnIndex(y);
+                            for (int x = 0; x < 3; x++) {
+                                igTableSetColumnIndex(x);
                                 static const char *labels[9] = {
                                     "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
                                 };
-                                if (x == 1 && y == 1) {
-                                    uint8_t bitmask = Bitmask(state.mask.currentBitmask);
-                                    char buf[9];
-                                    for (int i = 0; i < 8; i++)
-                                        buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
-                                    buf[8] = '\0';
-                                    igText("mask: 0b%s", buf);
-                                } else {
-                                    bool b = state.mask.currentBitmask->grid[y * 3 + x];
-                                    igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
-                                    if (igButton(labels[y * 3 + x], (ImVec2){gw, gh}))
-                                        state.mask.currentBitmask->grid[y * 3 + x] = !b;
-                                    igPopStyleColor(1);
-                                }
+                                bool b = state.mask.currentBitmask->grid[y * 3 + x];
+                                igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
+                                if (igButton(labels[y * 3 + x], (ImVec2){gw, gh}))
+                                    state.mask.currentBitmask->grid[y * 3 + x] = !b;
+                                igPopStyleColor(1);
                             }
                         }
                         igEndTable();
@@ -360,7 +337,7 @@ static void frame(void) {
                 buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
             buf[8] = '\0';
             if (igBeginTooltip()) {
-                igText("%d, %d: mask: 0b%s\n", gx, gy, buf);
+                igText("tile: %d, %d - mask: %d,0x%x,0b%s\n", gx, gy, bitmask, bitmask, buf);
                 igEndTooltip();
             }
         }
