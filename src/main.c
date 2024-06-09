@@ -72,6 +72,7 @@ static struct {
     struct {
         Tile grid[64*64];
         int width, height;
+        bool showTooltip;
     } map;
     struct {
         float x, y, zoom;
@@ -81,6 +82,7 @@ static struct {
 static void InitMap(void) {
     state.map.width = 32;
     state.map.height = 32;
+    state.map.showTooltip = false;
     memset(state.map.grid, 0, state.map.width*state.map.height*sizeof(Tile));
 }
 
@@ -321,9 +323,9 @@ static void frame(void) {
         sgp_draw_line(xx, 0, xx, (state.mask.spriteH*state.map.height)*state.mask.scale);
         for (int y = 0; y < state.map.height+1; y++) {
             float yy = y * state.mask.spriteH * state.mask.scale;
-            if (state.map.grid[y * state.map.width + x].on) {
+            if (state.map.grid[y * state.map.width + x].on &&
+                x < state.map.width && y < state.map.height)
                 sgp_draw_filled_rect(xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale);
-            }
             sgp_draw_line(0, yy, (state.mask.spriteW*state.map.width)*state.mask.scale, yy);
         }
     }
@@ -334,19 +336,31 @@ static void frame(void) {
         int rh = state.mask.spriteH * state.mask.scale;
         DrawMaskEditorBox(ox, oy, rw, rh, (sg_color){1.f, 0.f, 0.f, 1.f});
         
-        if (!sapp_any_modifiers() && sapp_was_button_released(SAPP_MOUSEBUTTON_LEFT))
-            state.map.grid[gy * state.map.width + gx].on = !state.map.grid[gy * state.map.width + gx].on;
+        if (!sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
+            state.map.grid[gy * state.map.width + gx].on = sapp_is_button_down(SAPP_MOUSEBUTTON_LEFT);
         
-        uint8_t bitmask = state.map.grid[gy * state.map.width + gx].mask;
-        char buf[9];
-        memset(buf, 0, 9*sizeof(char));
-        for (int i = 0; i < 8; i++)
-            buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
-        buf[8] = '\0';
-        printf("%d, %d: mask: 0b%s\n", gx, gy, buf);
-    }
+        state.map.showTooltip = true;
+    } else
+        state.map.showTooltip = false;
+    
     sgp_reset_color();
     sgp_pop_transform();
+    
+    if (state.map.showTooltip) {
+        if (igBegin("tooltip", &state.mask.open, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
+            uint8_t bitmask = state.map.grid[gy * state.map.width + gx].mask;
+            char buf[9];
+            memset(buf, 0, 9*sizeof(char));
+            for (int i = 0; i < 8; i++)
+                buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
+            buf[8] = '\0';
+            if (igBeginTooltip()) {
+                igText("%d, %d: mask: 0b%s\n", gx, gy, buf);
+                igEndTooltip();
+            }
+            igEnd();
+        }
+    }
     
     sg_pass pass = {.swapchain = sglue_swapchain()};
     sg_begin_pass(&pass);
