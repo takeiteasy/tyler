@@ -238,60 +238,65 @@ static void frame(void) {
     };
     int gw = state.mask.spriteW*state.mask.scale;
     int gh = state.mask.spriteH*state.mask.scale;
-    igSetNextWindowSize(maskEditSize, ImGuiCond_Once);
-    if (state.mask.open && igBegin("Mask Editor", &state.mask.open, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (igBeginChild_Str("Mask Editor", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-            ImDrawList* dl = igGetWindowDrawList();
-            ImDrawList_AddCallback(dl, igDrawMaskEditorCb, NULL);
-            for (int x = 0; x < state.mask.spriteX; x++)
-                for (int y = 0; y < state.mask.spriteY; y++) {
-                    igSetCursorPos((ImVec2){x*gw, y*gh});
-                    char buf[32];
-                    snprintf(buf, 32, "grid%dx%d", x, y);
-                    if (igInvisibleButton(buf, (ImVec2){gw, gh}, ImGuiButtonFlags_MouseButtonLeft)) {
-                        if (state.mask.currentBitmask)
-                            if (x == state.mask.currentBitmask->x &&
-                                y == state.mask.currentBitmask->y) {
-                                state.mask.currentBitmask = NULL;
-                                continue;
-                            }
-                        state.mask.currentBitmask = &state.mask.grid[y * state.mask.spriteX + x];
-                    }
-                }
-            igEndChild();
-        }
-        
-        if (state.mask.currentBitmask) {
-            maskEditSize.y += 10;
-            if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                igText("Tile (%d,%d)", state.mask.currentBitmask->x, state.mask.currentBitmask->y);
-                igBeginTable("button_grid", 3, ImGuiTableFlags_NoBordersInBody, maskEditSize, gw);
-                for (int x = 0; x < 3; x++) {
-                    igTableNextRow(ImGuiTableRowFlags_None, gh);
-                    for (int y = 0; y < 3; y++) {
-                        igTableSetColumnIndex(y);
-                        static const char *labels[9] = {
-                            "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
-                        };
-                        if (x == 1 && y == 1) {
-                            uint8_t bitmask = Bitmask(state.mask.currentBitmask);
-                            char buf[9];
-                            for (int i = 0; i < 8; i++)
-                                buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
-                            buf[8] = '\0';
-                            igText("mask: 0b%s", buf);
-                        } else {
-                            bool b = state.mask.currentBitmask->grid[y * 3 + x];
-                            igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
-                            if (igButton(labels[y * 3 + x], (ImVec2){gw, gh}))
-                                state.mask.currentBitmask->grid[y * 3 + x] = !b;
-                            igPopStyleColor(1);
+    
+    
+    if (state.mask.open) {
+        igSetNextWindowSize(maskEditSize, ImGuiCond_Once);
+        if (igBegin("Mask Editor", &state.mask.open, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (igBeginChild_Str("Mask Editor", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+                ImDrawList* dl = igGetWindowDrawList();
+                ImDrawList_AddCallback(dl, igDrawMaskEditorCb, NULL);
+                for (int x = 0; x < state.mask.spriteX; x++)
+                    for (int y = 0; y < state.mask.spriteY; y++) {
+                        igSetCursorPos((ImVec2){x*gw, y*gh});
+                        char buf[32];
+                        snprintf(buf, 32, "grid%dx%d", x, y);
+                        if (igInvisibleButton(buf, (ImVec2){gw, gh}, ImGuiButtonFlags_MouseButtonLeft)) {
+                            if (state.mask.currentBitmask)
+                                if (x == state.mask.currentBitmask->x &&
+                                    y == state.mask.currentBitmask->y) {
+                                    state.mask.currentBitmask = NULL;
+                                    continue;
+                                }
+                            state.mask.currentBitmask = &state.mask.grid[y * state.mask.spriteX + x];
                         }
                     }
-                }
-                igEndTable();
             }
             igEndChild();
+
+            if (state.mask.currentBitmask) {
+                maskEditSize.y += 10;
+                if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+                    igText("Tile (%d,%d)", state.mask.currentBitmask->x, state.mask.currentBitmask->y);
+                    if (igBeginTable("button_grid", 3, ImGuiTableFlags_NoBordersInBody, maskEditSize, gw)) {
+                        for (int x = 0; x < 3; x++) {
+                            igTableNextRow(ImGuiTableRowFlags_None, gh);
+                            for (int y = 0; y < 3; y++) {
+                                igTableSetColumnIndex(y);
+                                static const char *labels[9] = {
+                                    "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
+                                };
+                                if (x == 1 && y == 1) {
+                                    uint8_t bitmask = Bitmask(state.mask.currentBitmask);
+                                    char buf[9];
+                                    for (int i = 0; i < 8; i++)
+                                        buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
+                                    buf[8] = '\0';
+                                    igText("mask: 0b%s", buf);
+                                } else {
+                                    bool b = state.mask.currentBitmask->grid[y * 3 + x];
+                                    igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
+                                    if (igButton(labels[y * 3 + x], (ImVec2){gw, gh}))
+                                        state.mask.currentBitmask->grid[y * 3 + x] = !b;
+                                    igPopStyleColor(1);
+                                }
+                            }
+                        }
+                        igEndTable();
+                    }
+                }
+                igEndChild();
+            }
         }
         igEnd();
     }
@@ -346,7 +351,7 @@ static void frame(void) {
     sgp_reset_color();
     sgp_pop_transform();
     
-    if (state.map.showTooltip) {
+    if (state.map.showTooltip && !igIsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
         if (igBegin("tooltip", &state.mask.open, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
             uint8_t bitmask = state.map.grid[gy * state.map.width + gx].mask;
             char buf[9];
@@ -358,8 +363,8 @@ static void frame(void) {
                 igText("%d, %d: mask: 0b%s\n", gx, gy, buf);
                 igEndTooltip();
             }
-            igEnd();
         }
+        igEnd();
     }
     
     sg_pass pass = {.swapchain = sglue_swapchain()};
