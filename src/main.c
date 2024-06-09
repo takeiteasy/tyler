@@ -45,17 +45,15 @@ static uint8_t Bitmask(TileBitmask *mask) {
     CHECK_CORNER(8, 7, 5);
     uint8_t result = 0;
     for (int y = 0, n = 0; y < 3; y++)
-        for (int x = 0; x < 3; x++) {
-            if (!(y == 1 && x == 1) && mask->grid[y * 3 + x])
-                result += (1 << n++);
-            else
-                n++;
-        }
+        for (int x = 0; x < 3; x++, n++)
+            if (!(y == 1 && x == 1))
+                result += (mask->grid[y * 3 + x] << n);
     return result;
 }
 
 typedef struct {
-    // ...
+    bool on;
+    int mask;
 } Tile;
 
 static struct {
@@ -196,6 +194,24 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_flush();
 }
 
+
+static void UpdateMap(void) {
+    for (int x = 0; x < state.map.width; x++) {
+        for (int y = 0; y < state.map.height; y++) {
+            TileBitmask mask;
+            memset(&mask, 0, sizeof(TileBitmask));
+            mask.x = x;
+            mask.y = y;
+            for (int yy = 0; yy < 3; yy++)
+                for (int xx = 0; xx < 3; xx++) {
+                    int dx = x + (xx-1), dy = y + (yy-1);
+                    mask.grid[yy * 3 + xx] = dx < 0 || dy < 0 || dx >= state.map.width || dy >=state.map.height ? 0 : state.map.grid[dy * state.map.width + dx].on;
+                }
+            state.map.grid[y * state.map.width + x].mask = Bitmask(&mask);
+        }
+    }
+}
+
 static void frame(void) {
     int width = sapp_width(), height = sapp_height();
     sgp_begin(width, height);
@@ -285,17 +301,49 @@ static void frame(void) {
         state.camera.x -= sapp_cursor_delta_x();
         state.camera.y -= sapp_cursor_delta_y();
     }
+    
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) && sapp_was_key_released(SAPP_KEYCODE_M))
+        state.mask.open = !state.mask.open;
 
+    int mx = sapp_cursor_x();
+    int my = sapp_cursor_y();
+    int sx = (((mx - (width/2)) + state.camera.x) / state.mask.scale);
+    int sy = ((my - (height/2)) + state.camera.y) / state.mask.scale;
+    int gx = sx / 8;
+    int gy = sy / 8;
+    
     sgp_push_transform();
     sgp_translate((width/2)-state.camera.x, (height/2)-state.camera.y);
+    
     sgp_set_color(1.f, 1.f, 1.f, 1.f);
     for (int x = 0; x < state.map.width+1; x++) {
         float xx = x * state.mask.spriteW * state.mask.scale;
         sgp_draw_line(xx, 0, xx, (state.mask.spriteH*state.map.height)*state.mask.scale);
         for (int y = 0; y < state.map.height+1; y++) {
             float yy = y * state.mask.spriteH * state.mask.scale;
+            if (state.map.grid[y * state.map.width + x].on) {
+                sgp_draw_filled_rect(xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale);
+            }
             sgp_draw_line(0, yy, (state.mask.spriteW*state.map.width)*state.mask.scale, yy);
         }
+    }
+    if (IsPointInRect((sgp_rect){0,0,state.map.width,state.map.height}, gx, gy)) {
+        int ox = (gx * state.mask.spriteW) * state.mask.scale;
+        int oy = (gy * state.mask.spriteH) * state.mask.scale;
+        int rw = state.mask.spriteW * state.mask.scale;
+        int rh = state.mask.spriteH * state.mask.scale;
+        DrawMaskEditorBox(ox, oy, rw, rh, (sg_color){1.f, 0.f, 0.f, 1.f});
+        
+        if (!sapp_any_modifiers() && sapp_was_button_released(SAPP_MOUSEBUTTON_LEFT))
+            state.map.grid[gy * state.map.width + gx].on = !state.map.grid[gy * state.map.width + gx].on;
+        
+        uint8_t bitmask = state.map.grid[gy * state.map.width + gx].mask;
+        char buf[9];
+        memset(buf, 0, 9*sizeof(char));
+        for (int i = 0; i < 8; i++)
+            buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
+        buf[8] = '\0';
+        printf("%d, %d: mask: 0b%s\n", gx, gy, buf);
     }
     sgp_reset_color();
     sgp_pop_transform();
@@ -308,6 +356,7 @@ static void frame(void) {
     sg_end_pass();
     sg_commit();
     sokol_input_update();
+    UpdateMap();
 }
 
 static void init(void) {
