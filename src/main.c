@@ -31,6 +31,7 @@ typedef struct {
 
 static struct {
     struct {
+        sgp_rect map[0xFF];
         TileBitmask *grid;
         float scale;
         bool open;
@@ -43,7 +44,7 @@ static struct {
         TileBitmask *currentBitmask;
     } mask;
     struct {
-        Tile grid[64*64];
+        Tile *grid;
         int width, height;
         bool showTooltip;
     } map;
@@ -56,11 +57,14 @@ static void InitMap(void) {
     state.map.width = 32;
     state.map.height = 32;
     state.map.showTooltip = false;
-    memset(state.map.grid, 0, state.map.width*state.map.height*sizeof(Tile));
+    size_t sz = state.map.width * state.map.height * sizeof(Tile);
+    state.map.grid = malloc(sz);
+    memset(state.map.grid, 0, sz);
 }
 
 static void DestroyMap(void) {
-    // ...
+    if (state.map.grid)
+        free(state.map.grid);
 }
 
 static void InitMaskEditor(void) {
@@ -75,9 +79,7 @@ static void InitMaskEditor(void) {
     state.mask.spriteW = state.mask.spriteH = 8;
     state.mask.spriteX = state.mask.default_3x3.width / state.mask.spriteW;
     state.mask.spriteY = state.mask.default_3x3.height / state.mask.spriteH;
-    size_t sz = (state.mask.spriteX * state.mask.spriteY) * sizeof(TileBitmask);
-    state.mask.grid = malloc(sz);
-    memset(state.mask.grid, 0, sz);
+    state.mask.grid = malloc(state.mask.spriteX * state.mask.spriteY * sizeof(TileBitmask));
     for (int x = 0; x < state.mask.spriteX; x++)
         for (int y = 0; y < state.mask.spriteY; y++) {
             TileBitmask *mask = &state.mask.grid[y * state.mask.spriteX + x];
@@ -96,7 +98,7 @@ static void DestroyMaskEditor(void) {
 }
 
 int IsPointInRect(sgp_rect r, int x, int y) {
-  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+    return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
 static void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color) {
@@ -160,7 +162,7 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
             for (int yy = 0; yy < 3; yy++)
                 for (int xx = 0; xx < 3; xx++)
                     if (state.mask.grid[y * state.mask.spriteX + x].grid[yy * 3 + xx]) {
-                        sgp_rect dst = {dx+(yy*ey)+2, dy+(xx*ex)+2, state.mask.spriteW, state.mask.spriteH};
+                        sgp_rect dst = {dx+(xx*ex)+2, dy+(yy*ey)+2, state.mask.spriteW, state.mask.spriteH};
                         sgp_rect src = {0, 0, 8, 8};
                         sgp_draw_textured_rect(0, dst, src);
                     }
@@ -199,7 +201,7 @@ static void frame(void) {
     int width = sapp_width(), height = sapp_height();
     sgp_begin(width, height);
     
-    sgp_set_color(0.05f, 0.05f, 0.05f, 1.0f);
+    sgp_set_color(.05f, .05f, .05f, 1.f);
     sgp_clear();
     sgp_reset_color();
     sgp_set_blend_mode(SGP_BLENDMODE_BLEND);
@@ -212,7 +214,7 @@ static void frame(void) {
     };
     simgui_new_frame(&igFrameDesc);
     
-    igSetNextWindowPos((ImVec2){20, 20}, ImGuiCond_Once, (ImVec2){0,0});
+    igSetNextWindowPos((ImVec2){20,20}, ImGuiCond_Once, (ImVec2){0,0});
     ImVec2 maskEditSize = (ImVec2) {
         .x = state.mask.currentAtlas->width*state.mask.scale,
         .y = state.mask.currentAtlas->height*state.mask.scale
@@ -244,6 +246,27 @@ static void frame(void) {
                     }
             }
             igEndChild();
+            
+            float *p = (float*)&state.mask.map;
+            for (int _=0;_<0xFF*4;_++)
+                *p++ = -1;
+            for (int x = 0; x < state.mask.spriteX; x++)
+                for (int y = 0; y < state.mask.spriteY; y++) {
+                    uint8_t mask = Bitmask(&state.mask.grid[y * state.mask.spriteX + x]);
+                    if (!mask)
+                        continue;
+                    sgp_rect *dst = &state.mask.map[mask];
+                    if (dst->x == -1 || dst->y == -1 || dst->w == -1 || dst->h == -1) {
+                        dst->x = x;
+                        dst->y = y;
+                        dst->w = state.mask.spriteW;
+                        dst->h = state.mask.spriteH;
+                    } else {
+                        igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 0.f, 0.f, 1.f});
+                        igText("ERROR: Tile (%d,%d) has same mask as (%d,%d)", x, y, dst->x, dst->y);
+                        igPopStyleColor(1);
+                    }
+                }
 
             if (state.mask.currentBitmask) {
                 maskEditSize.y += 10;
