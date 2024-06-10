@@ -31,7 +31,7 @@ typedef struct {
 
 static struct {
     struct {
-        sgp_rect map[0xFF];
+        sgp_rect map[256];
         TileBitmask *grid;
         float scale;
         bool open;
@@ -222,7 +222,6 @@ static void frame(void) {
     int gw = state.mask.spriteW*state.mask.scale;
     int gh = state.mask.spriteH*state.mask.scale;
     
-    
     if (state.mask.open) {
         igSetNextWindowSize(maskEditSize, ImGuiCond_Once);
         if (igBegin("Mask Editor", &state.mask.open, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -247,13 +246,14 @@ static void frame(void) {
             }
             igEndChild();
             
-            float *p = (float*)&state.mask.map;
-            for (int _=0;_<0xFF*4;_++)
-                *p++ = -1;
+            
+            for (int i = 0; i < 256; i++)
+                state.mask.map[i] = (sgp_rect){-1,-1,-1,-1};
             for (int x = 0; x < state.mask.spriteX; x++)
                 for (int y = 0; y < state.mask.spriteY; y++) {
-                    uint8_t mask = Bitmask(&state.mask.grid[y * state.mask.spriteX + x]);
-                    if (!mask)
+                    TileBitmask *tmask = &state.mask.grid[y * state.mask.spriteX + x];
+                    uint8_t mask = Bitmask(tmask);
+                    if (!mask && !tmask->grid[4])
                         continue;
                     sgp_rect *dst = &state.mask.map[mask];
                     if (dst->x == -1 || dst->y == -1 || dst->w == -1 || dst->h == -1) {
@@ -322,15 +322,25 @@ static void frame(void) {
     sgp_push_transform();
     sgp_translate((width/2)-state.camera.x, (height/2)-state.camera.y);
     
-    sgp_set_color(1.f, 1.f, 1.f, 1.f);
+    UpdateMap();
     for (int x = 0; x < state.map.width+1; x++) {
         float xx = x * state.mask.spriteW * state.mask.scale;
+        sgp_set_color(1.f, 1.f, 1.f, 1.f);
         sgp_draw_line(xx, 0, xx, (state.mask.spriteH*state.map.height)*state.mask.scale);
         for (int y = 0; y < state.map.height+1; y++) {
             float yy = y * state.mask.spriteH * state.mask.scale;
-            if (state.map.grid[y * state.map.width + x].on &&
-                x < state.map.width && y < state.map.height)
-                sgp_draw_filled_rect(xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale);
+            Tile *tile = &state.map.grid[y * state.map.width + x];
+            if (tile->on && x < state.map.width && y < state.map.height) {
+                sgp_rect dst = {xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale};
+                sgp_rect *src = &state.mask.map[tile->mask];
+                if (src->x == -1 || src->y == -1 || src->w == -1 || src->h == -1) {
+                    sgp_draw_filled_rect(dst.x, dst.y, dst.w, dst.h);
+                } else {
+                    sgp_set_image(0, state.mask.currentAtlas->texture);
+                    sgp_draw_textured_rect(0, dst, (sgp_rect){src->x*src->w, src->y*src->h, src->w, src->h});
+                    sgp_reset_image(0);
+                }
+            }
             sgp_draw_line(0, yy, (state.mask.spriteW*state.map.width)*state.mask.scale, yy);
         }
     }
@@ -341,7 +351,7 @@ static void frame(void) {
         int rh = state.mask.spriteH * state.mask.scale;
         DrawMaskEditorBox(ox, oy, rw, rh, (sg_color){1.f, 0.f, 0.f, 1.f});
         
-        if (!sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
+        if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
             state.map.grid[gy * state.map.width + gx].on = sapp_is_button_down(SAPP_MOUSEBUTTON_LEFT);
         
         state.map.showTooltip = true;
@@ -375,7 +385,6 @@ static void frame(void) {
     sg_end_pass();
     sg_commit();
     sokol_input_update();
-    UpdateMap();
 }
 
 static void init(void) {
@@ -409,7 +418,8 @@ static void init(void) {
 
 static void input(const sapp_event *e) {
     simgui_handle_event(e);
-    sokol_input_handler(e);
+    if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+        sokol_input_handler(e);
 }
 
 static void cleanup(void) {
