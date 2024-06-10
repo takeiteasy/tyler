@@ -171,7 +171,15 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_flush();
 }
 
-static uint8_t Bitmask(TileBitmask *mask) {
+static uint8_t Bitmask(TileBitmask *mask, bool fix_corners) {
+#define CHECK_CORNER(N, A, B) \
+    mask->grid[(N)] = !mask->grid[(A)] || !mask->grid[(B)] ? false : mask->grid[(N)];
+    if (fix_corners) {
+        CHECK_CORNER(0, 1, 3);
+        CHECK_CORNER(2, 1, 5);
+        CHECK_CORNER(6, 7, 3);
+        CHECK_CORNER(8, 7, 5);
+    }
     uint8_t result = 0;
     for (int y = 0, n = 0; y < 3; y++)
         for (int x = 0; x < 3; x++)
@@ -192,7 +200,7 @@ static void UpdateMap(void) {
                     int dx = x + (xx-1), dy = y + (yy-1);
                     mask.grid[yy * 3 + xx] = dx < 0 || dy < 0 || dx >= state.map.width || dy >=state.map.height ? 0 : state.map.grid[dy * state.map.width + dx].on;
                 }
-            state.map.grid[y * state.map.width + x].mask = Bitmask(&mask);
+            state.map.grid[y * state.map.width + x].mask = Bitmask(&mask, true);
         }
     }
 }
@@ -252,7 +260,7 @@ static void frame(void) {
             for (int x = 0; x < state.mask.spriteX; x++)
                 for (int y = 0; y < state.mask.spriteY; y++) {
                     TileBitmask *tmask = &state.mask.grid[y * state.mask.spriteX + x];
-                    uint8_t mask = Bitmask(tmask);
+                    uint8_t mask = Bitmask(tmask, false);
                     if (!mask && !tmask->grid[4])
                         continue;
                     sgp_rect *dst = &state.mask.map[mask];
@@ -271,7 +279,7 @@ static void frame(void) {
             if (state.mask.currentBitmask) {
                 maskEditSize.y += 10;
                 if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                    uint8_t bitmask = Bitmask(state.mask.currentBitmask);
+                    uint8_t bitmask = Bitmask(state.mask.currentBitmask, false);
                     char buf[9];
                     for (int i = 0; i < 8; i++)
                         buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
