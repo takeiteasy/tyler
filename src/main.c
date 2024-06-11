@@ -1,3 +1,5 @@
+#define TY_IMPL
+#include "ty.h"
 #define SOKOL_HELPER_IMPL
 #include "sokol_helpers/sokol_input.h"
 #include "sokol_helpers/sokol_img.h"
@@ -20,19 +22,13 @@ typedef struct {
 } Texture;
 
 typedef struct {
-    bool grid[9];
-    int x, y;
-} TileBitmask;
-
-typedef struct {
     bool on;
     int mask;
 } Tile;
 
 static struct {
     struct {
-        sgp_rect map[256];
-        TileBitmask *grid;
+        tyNeighbours *grid;
         float scale;
         bool open;
         int spriteW, spriteX;
@@ -41,7 +37,7 @@ static struct {
         Texture default_3x3;
         Texture *currentAtlas;
         sg_image cross;
-        TileBitmask *currentBitmask;
+        tyNeighbours *currentBitmask;
     } mask;
     struct {
         Tile *grid;
@@ -51,6 +47,7 @@ static struct {
     struct {
         float x, y, zoom;
     } camera;
+    tyState ty;
 } state;
 
 static void InitMap(void) {
@@ -79,11 +76,11 @@ static void InitMaskEditor(void) {
     state.mask.spriteW = state.mask.spriteH = 8;
     state.mask.spriteX = state.mask.default_3x3.width / state.mask.spriteW;
     state.mask.spriteY = state.mask.default_3x3.height / state.mask.spriteH;
-    state.mask.grid = malloc(state.mask.spriteX * state.mask.spriteY * sizeof(TileBitmask));
+    state.mask.grid = malloc(state.mask.spriteX * state.mask.spriteY * sizeof(tyNeighbours));
     for (int x = 0; x < state.mask.spriteX; x++)
         for (int y = 0; y < state.mask.spriteY; y++) {
-            TileBitmask *mask = &state.mask.grid[y * state.mask.spriteX + x];
-            memset(mask->grid, 0, sizeof(bool) * 9);
+            tyNeighbours *mask = &state.mask.grid[y * state.mask.spriteX + x];
+            memset(mask->grid, 0, sizeof(int) * 9);
             mask->x = x;
             mask->y = y;
         }
@@ -113,10 +110,10 @@ static void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color
 static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     int sw = state.mask.currentAtlas->width*state.mask.scale;
     int sh = state.mask.currentAtlas->height*state.mask.scale;
-    int cx = (int) cmd->ClipRect.x;
-    int cy = (int) cmd->ClipRect.y;
-    int cw = (int) (cmd->ClipRect.z - cmd->ClipRect.x);
-    int ch = (int) (cmd->ClipRect.w - cmd->ClipRect.y);
+    int cx = (int)cmd->ClipRect.x;
+    int cy = (int)cmd->ClipRect.y;
+    int cw = (int)(cmd->ClipRect.z - cmd->ClipRect.x);
+    int ch = (int)(cmd->ClipRect.w - cmd->ClipRect.y);
     sgp_scissor(cx, cy, cw, ch);
     cx = cx ? cx : cw - sw;
     cy = cy ? cy : ch - sh;
@@ -171,38 +168,8 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_flush();
 }
 
-static uint8_t Bitmask(TileBitmask *mask, bool fix_corners) {
-#define CHECK_CORNER(N, A, B) \
-    mask->grid[(N)] = !mask->grid[(A)] || !mask->grid[(B)] ? false : mask->grid[(N)];
-    if (fix_corners) {
-        CHECK_CORNER(0, 1, 3);
-        CHECK_CORNER(2, 1, 5);
-        CHECK_CORNER(6, 7, 3);
-        CHECK_CORNER(8, 7, 5);
-    }
-    uint8_t result = 0;
-    for (int y = 0, n = 0; y < 3; y++)
-        for (int x = 0; x < 3; x++)
-            if (!(y == 1 && x == 1))
-                result += (mask->grid[y * 3 + x] << n++);
-    return result;
-}
-
-static void UpdateMap(void) {
-    for (int x = 0; x < state.map.width; x++) {
-        for (int y = 0; y < state.map.height; y++) {
-            TileBitmask mask;
-            memset(&mask, 0, sizeof(TileBitmask));
-            mask.x = x;
-            mask.y = y;
-            for (int yy = 0; yy < 3; yy++)
-                for (int xx = 0; xx < 3; xx++) {
-                    int dx = x + (xx-1), dy = y + (yy-1);
-                    mask.grid[yy * 3 + xx] = dx < 0 || dy < 0 || dx >= state.map.width || dy >=state.map.height ? 0 : state.map.grid[dy * state.map.width + dx].on;
-                }
-            state.map.grid[y * state.map.width + x].mask = Bitmask(&mask, true);
-        }
-    }
+static int CheckMap(int x, int y) {
+    return state.map.grid[y * state.map.width + x].on == true;
 }
 
 static void frame(void) {
@@ -256,19 +223,17 @@ static void frame(void) {
             
             
             for (int i = 0; i < 256; i++)
-                state.mask.map[i] = (sgp_rect){-1,-1,-1,-1};
+                state.ty.map[i] = (tyPoint){-1,-1};
             for (int x = 0; x < state.mask.spriteX; x++)
                 for (int y = 0; y < state.mask.spriteY; y++) {
-                    TileBitmask *tmask = &state.mask.grid[y * state.mask.spriteX + x];
-                    uint8_t mask = Bitmask(tmask, false);
+                    tyNeighbours *tmask = &state.mask.grid[y * state.mask.spriteX + x];
+                    uint8_t mask = tyBitmask(tmask, 0);
                     if (!mask && !tmask->grid[4])
                         continue;
-                    sgp_rect *dst = &state.mask.map[mask];
-                    if (dst->x == -1 || dst->y == -1 || dst->w == -1 || dst->h == -1) {
+                    tyPoint *dst = &state.ty.map[mask];
+                    if (dst->x == -1 || dst->y == -1) {
                         dst->x = x;
                         dst->y = y;
-                        dst->w = state.mask.spriteW;
-                        dst->h = state.mask.spriteH;
                     } else {
                         igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 0.f, 0.f, 1.f});
                         igText("ERROR: Tile (%d,%d) has same mask as (%d,%d)", x, y, dst->x, dst->y);
@@ -279,7 +244,7 @@ static void frame(void) {
             if (state.mask.currentBitmask) {
                 maskEditSize.y += 10;
                 if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                    uint8_t bitmask = Bitmask(state.mask.currentBitmask, false);
+                    uint8_t bitmask = tyBitmask(state.mask.currentBitmask, 0);
                     char buf[9];
                     for (int i = 0; i < 8; i++)
                         buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
@@ -330,7 +295,21 @@ static void frame(void) {
     sgp_push_transform();
     sgp_translate((width/2)-state.camera.x, (height/2)-state.camera.y);
     
-    UpdateMap();
+    for (int x = 0; x < state.map.width; x++) {
+        for (int y = 0; y < state.map.height; y++) {
+            tyNeighbours mask;
+            memset(&mask, 0, sizeof(tyNeighbours));
+            mask.x = x;
+            mask.y = y;
+            for (int yy = 0; yy < 3; yy++)
+                for (int xx = 0; xx < 3; xx++) {
+                    int dx = x + (xx-1), dy = y + (yy-1);
+                    mask.grid[yy * 3 + xx] = dx < 0 || dy < 0 || dx >= state.map.width || dy >=state.map.height ? 0 : state.map.grid[dy * state.map.width + dx].on;
+                }
+            state.map.grid[y * state.map.width + x].mask = tyBitmask(&mask, 1);
+        }
+    }
+    
     for (int x = 0; x < state.map.width+1; x++) {
         float xx = x * state.mask.spriteW * state.mask.scale;
         sgp_set_color(1.f, 1.f, 1.f, 1.f);
@@ -340,12 +319,12 @@ static void frame(void) {
             Tile *tile = &state.map.grid[y * state.map.width + x];
             if (tile->on && x < state.map.width && y < state.map.height) {
                 sgp_rect dst = {xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale};
-                sgp_rect *src = &state.mask.map[tile->mask];
-                if (src->x == -1 || src->y == -1 || src->w == -1 || src->h == -1) {
+                tyPoint *src = &state.ty.map[tile->mask];
+                if (src->x == -1 || src->y == -1) {
                     sgp_draw_filled_rect(dst.x, dst.y, dst.w, dst.h);
                 } else {
                     sgp_set_image(0, state.mask.currentAtlas->texture);
-                    sgp_draw_textured_rect(0, dst, (sgp_rect){src->x*src->w, src->y*src->h, src->w, src->h});
+                    sgp_draw_textured_rect(0, dst, (sgp_rect){src->x*state.mask.spriteW, src->y*state.mask.spriteH, state.mask.spriteW, state.mask.spriteH});
                     sgp_reset_image(0);
                 }
             }
@@ -422,6 +401,7 @@ static void init(void) {
     
     InitMaskEditor();
     InitMap();
+    tyInit(&state.ty, CheckMap, state.map.width, state.map.height);
 }
 
 static void input(const sapp_event *e) {

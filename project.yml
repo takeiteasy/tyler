@@ -29,6 +29,8 @@ targets:
     platform: macOS
     sources:
         - path: src/
+          excludes:
+            - "test.c"
         - path: build/
           type: folder
         - path: deps/
@@ -50,6 +52,22 @@ targets:
                               $(PROJECT_DIR)/src,
                               $(PROJECT_DIR)/deps/cimgui,
                               $(PROJECT_DIR)/deps/cimgui/imgui]
+        OTHER_CFLAGS: [-x objective-c,
+                       -DSOKOL_METAL,
+                       -fobjc-arc]
+  ty_example:
+    type: tool
+    platform: macOS
+    source:
+        - path: src/test.c
+    dependencies:
+        - sdk: Cocoa.framework
+        - sdk: Metal.framework
+        - sdk: MetalKit.framework
+        - sdk: Quartz.framework
+    settings:
+        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps,
+                              $(PROJECT_DIR)/deps/sokol_helpers]
         OTHER_CFLAGS: [-x objective-c,
                        -DSOKOL_METAL,
                        -fobjc-arc]
