@@ -10,4 +10,10 @@
 
 #include "tyler.h"
 
+void InitMaskEditor(void);
+void DestroyMaskEditor(void);
+void DrawMaskEditor(tyState *ty);
+void ToggleMaskEditor(void);
+sg_image MaskEditorTexture(void);
+
 #endif /* mask_editor_h */

@@ -1,9 +1,13 @@
 #include "tyler.h"
+#include "mask_editor.h"
 #include <stdlib.h>
 #include <string.h>
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 
+extern int IsPointInRect(sgp_rect r, int x, int y);
+extern void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color);
+    
 typedef struct {
     sg_image texture;
     int width, height;
@@ -16,18 +20,7 @@ typedef struct {
 
 static struct {
     struct {
-        tyNeighbours *grid;
-        float scale;
-        bool open;
-        int spriteW, spriteX;
-        int spriteH, spriteY;
-        Texture default_2x2;
-        Texture default_3x3;
-        Texture *currentAtlas;
-        sg_image cross;
-        tyNeighbours *currentBitmask;
-    } mask;
-    struct {
+        int tileW, tileH;
         Tile *grid;
         int width, height;
         bool showTooltip;
@@ -41,6 +34,8 @@ static struct {
 static void InitMap(void) {
     state.map.width = 32;
     state.map.height = 32;
+    state.map.tileW = 8;
+    state.map.tileH = 8;
     state.map.showTooltip = false;
     size_t sz = state.map.width * state.map.height * sizeof(Tile);
     state.map.grid = malloc(sz);
@@ -52,109 +47,6 @@ static void DestroyMap(void) {
         free(state.map.grid);
 }
 
-static void InitMaskEditor(void) {
-    state.mask.default_2x2.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_2x2.png", &state.mask.default_2x2.width, &state.mask.default_2x2.height);
-    state.mask.default_3x3.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_3x3.png", &state.mask.default_3x3.width, &state.mask.default_3x3.height);
-    state.mask.cross = sg_load_texture_path("/Users/george/git/tyler/assets/x.png");
-    state.mask.currentAtlas = &state.mask.default_3x3;
-    
-    state.mask.open = true;
-    state.mask.scale = 4.f;
-    
-    state.mask.spriteW = state.mask.spriteH = 8;
-    state.mask.spriteX = state.mask.default_3x3.width / state.mask.spriteW;
-    state.mask.spriteY = state.mask.default_3x3.height / state.mask.spriteH;
-    state.mask.grid = malloc(state.mask.spriteX * state.mask.spriteY * sizeof(tyNeighbours));
-    for (int x = 0; x < state.mask.spriteX; x++)
-        for (int y = 0; y < state.mask.spriteY; y++) {
-            tyNeighbours *mask = &state.mask.grid[y * state.mask.spriteX + x];
-            memset(mask->grid, 0, sizeof(int) * 9);
-            mask->x = x;
-            mask->y = y;
-        }
-    state.mask.currentBitmask = NULL;
-}
-
-static void DestroyMaskEditor(void) {
-    sokol_helper_destroy(state.mask.default_2x2.texture);
-    sokol_helper_destroy(state.mask.default_3x3.texture);
-    if (state.mask.grid)
-        free(state.mask.grid);
-}
-
-int IsPointInRect(sgp_rect r, int x, int y) {
-    return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
-}
-
-static void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color) {
-    sgp_set_color(color.r, color.g, color.b, color.a);
-    sgp_draw_line(x, y, x + w, y);
-    sgp_draw_line(x, y, x, y + h);
-    sgp_draw_line(x + w, y, x + w, y + h);
-    sgp_draw_line(x, y + h, x + w, y + h);
-    sgp_reset_color();
-}
-
-static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
-    int sw = state.mask.currentAtlas->width*state.mask.scale;
-    int sh = state.mask.currentAtlas->height*state.mask.scale;
-    int cx = (int)cmd->ClipRect.x;
-    int cy = (int)cmd->ClipRect.y;
-    int cw = (int)(cmd->ClipRect.z - cmd->ClipRect.x);
-    int ch = (int)(cmd->ClipRect.w - cmd->ClipRect.y);
-    sgp_scissor(cx, cy, cw, ch);
-    cx = cx ? cx : cw - sw;
-    cy = cy ? cy : ch - sh;
-    sgp_viewport(cx, cy, sw, sh);
-    sgp_set_image(0, state.mask.currentAtlas->texture);
-    sgp_push_transform();
-    sgp_scale(state.mask.scale, state.mask.scale);
-    sgp_draw_filled_rect(0, 0, state.mask.currentAtlas->width, state.mask.currentAtlas->height);
-    sgp_pop_transform();
-    sgp_reset_image(0);
-    
-    int mx = sapp_cursor_x(), my = sapp_cursor_y();
-    if (IsPointInRect((sgp_rect){cx, cy, cw, ch}, mx, my)) {
-        int gw = state.mask.spriteW*state.mask.scale;
-        int gh = state.mask.spriteH*state.mask.scale;
-        int gx = (mx - cx)/gw;
-        int gy = (my - cy)/gh;
-        int ox = MAX(gx * gw, 1);
-        int oy = MAX(gy * gh, 1);
-        int dx = ox + gw >= cw ? gw-2 : gw;
-        int dy = oy + gh >= ch ? gh-2 : gh;
-        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 1.f, 1.f, 1.f});
-    }
-    
-    if (state.mask.currentBitmask != NULL) {
-        int gw = state.mask.spriteW*state.mask.scale;
-        int gh = state.mask.spriteH*state.mask.scale;
-        float ox = MAX(state.mask.currentBitmask->x * gw, 1);
-        float oy = MAX(state.mask.currentBitmask->y * gh, 1);
-        int dx = ox + gw >= cw ? gw-2 : gw;
-        int dy = oy + gh >= ch ? gh-2 : gh;
-        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 0.f, 0.f, 1.f});
-    }
-    
-    sgp_set_image(0, state.mask.cross);
-    for (int x = 0; x < state.mask.spriteX; x++)
-        for (int y = 0; y < state.mask.spriteY; y++) {
-            float dx = ((x * state.mask.spriteW)*state.mask.scale);
-            float dy = ((y * state.mask.spriteH)*state.mask.scale);
-            int gw = state.mask.spriteW*state.mask.scale;
-            int gh = state.mask.spriteH*state.mask.scale;
-            float ex = gw/3, ey = gh/3;
-            for (int yy = 0; yy < 3; yy++)
-                for (int xx = 0; xx < 3; xx++)
-                    if (state.mask.grid[y * state.mask.spriteX + x].grid[yy * 3 + xx]) {
-                        sgp_rect dst = {dx+(xx*ex)+2, dy+(yy*ey)+2, state.mask.spriteW, state.mask.spriteH};
-                        sgp_rect src = {0, 0, 8, 8};
-                        sgp_draw_textured_rect(0, dst, src);
-                    }
-        }
-    sgp_reset_image(0);
-    sgp_flush();
-}
 
 static int CheckMap(int x, int y) {
     return state.map.grid[y * state.map.width + x].on == true;
@@ -177,90 +69,7 @@ static void frame(void) {
     };
     simgui_new_frame(&igFrameDesc);
     
-    igSetNextWindowPos((ImVec2){20,20}, ImGuiCond_Once, (ImVec2){0,0});
-    ImVec2 maskEditSize = (ImVec2) {
-        .x = state.mask.currentAtlas->width*state.mask.scale,
-        .y = state.mask.currentAtlas->height*state.mask.scale
-    };
-    int gw = state.mask.spriteW*state.mask.scale;
-    int gh = state.mask.spriteH*state.mask.scale;
-    
-    if (state.mask.open) {
-        igSetNextWindowSize(maskEditSize, ImGuiCond_Once);
-        if (igBegin("Mask Editor", &state.mask.open, ImGuiWindowFlags_AlwaysAutoResize)) {
-            if (igBeginChild_Str("Mask Editor", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                ImDrawList* dl = igGetWindowDrawList();
-                ImDrawList_AddCallback(dl, igDrawMaskEditorCb, NULL);
-                for (int x = 0; x < state.mask.spriteX; x++)
-                    for (int y = 0; y < state.mask.spriteY; y++) {
-                        igSetCursorPos((ImVec2){x*gw, y*gh});
-                        char buf[32];
-                        snprintf(buf, 32, "grid%dx%d", x, y);
-                        if (igInvisibleButton(buf, (ImVec2){gw, gh}, ImGuiButtonFlags_MouseButtonLeft)) {
-                            if (state.mask.currentBitmask)
-                                if (x == state.mask.currentBitmask->x &&
-                                    y == state.mask.currentBitmask->y) {
-                                    state.mask.currentBitmask = NULL;
-                                    continue;
-                                }
-                            state.mask.currentBitmask = &state.mask.grid[y * state.mask.spriteX + x];
-                        }
-                    }
-            }
-            igEndChild();
-            
-            
-            for (int i = 0; i < 256; i++)
-                state.ty.map[i] = (tyPoint){-1,-1};
-            for (int x = 0; x < state.mask.spriteX; x++)
-                for (int y = 0; y < state.mask.spriteY; y++) {
-                    tyNeighbours *tmask = &state.mask.grid[y * state.mask.spriteX + x];
-                    uint8_t mask = tyBitmask(tmask, 0);
-                    if (!mask && !tmask->grid[4])
-                        continue;
-                    tyPoint *dst = &state.ty.map[mask];
-                    if (dst->x == -1 || dst->y == -1) {
-                        dst->x = x;
-                        dst->y = y;
-                    } else {
-                        igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 0.f, 0.f, 1.f});
-                        igText("ERROR: Tile (%d,%d) has same mask as (%d,%d)", x, y, dst->x, dst->y);
-                        igPopStyleColor(1);
-                    }
-                }
-
-            if (state.mask.currentBitmask) {
-                maskEditSize.y += 10;
-                if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-                    uint8_t bitmask = tyBitmask(state.mask.currentBitmask, 0);
-                    char buf[9];
-                    for (int i = 0; i < 8; i++)
-                        buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
-                    buf[8] = '\0';
-                    igText("tile: %d, %d - mask: %d,0x%x,0b%s", state.mask.currentBitmask->x, state.mask.currentBitmask->y, bitmask, bitmask, buf);
-                    if (igBeginTable("button_grid", 3, ImGuiTableFlags_NoBordersInBody, maskEditSize, gw)) {
-                        for (int y = 0; y < 3; y++) {
-                            igTableNextRow(ImGuiTableRowFlags_None, gh);
-                            for (int x = 0; x < 3; x++) {
-                                igTableSetColumnIndex(x);
-                                static const char *labels[9] = {
-                                    "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
-                                };
-                                bool b = state.mask.currentBitmask->grid[y * 3 + x];
-                                igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
-                                if (igButton(labels[y * 3 + x], (ImVec2){gw, gh}))
-                                    state.mask.currentBitmask->grid[y * 3 + x] = !b;
-                                igPopStyleColor(1);
-                            }
-                        }
-                        igEndTable();
-                    }
-                }
-                igEndChild();
-            }
-        }
-        igEnd();
-    }
+    DrawMaskEditor(&state.ty);
     
     sgp_viewport(0, 0, width, height);
     sgp_project(0.f, width, 0, height);
@@ -271,12 +80,12 @@ static void frame(void) {
     }
     
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) && sapp_was_key_released(SAPP_KEYCODE_M))
-        state.mask.open = !state.mask.open;
+        ToggleMaskEditor();
 
     int mx = sapp_cursor_x();
     int my = sapp_cursor_y();
-    int sx = (((mx - (width/2)) + state.camera.x) / state.mask.scale);
-    int sy = ((my - (height/2)) + state.camera.y) / state.mask.scale;
+    int sx = (((mx - (width/2)) + state.camera.x) / state.camera.zoom);
+    int sy = ((my - (height/2)) + state.camera.y) / state.camera.zoom;
     int gx = sx / 8;
     int gy = sy / 8;
     
@@ -299,31 +108,31 @@ static void frame(void) {
     }
     
     for (int x = 0; x < state.map.width+1; x++) {
-        float xx = x * state.mask.spriteW * state.mask.scale;
+        float xx = x * state.map.tileW * state.camera.zoom;
         sgp_set_color(1.f, 1.f, 1.f, 1.f);
-        sgp_draw_line(xx, 0, xx, (state.mask.spriteH*state.map.height)*state.mask.scale);
+        sgp_draw_line(xx, 0, xx, (state.map.tileH*state.map.height)*state.camera.zoom);
         for (int y = 0; y < state.map.height+1; y++) {
-            float yy = y * state.mask.spriteH * state.mask.scale;
+            float yy = y * state.map.tileH * state.camera.zoom;
             Tile *tile = &state.map.grid[y * state.map.width + x];
             if (tile->on && x < state.map.width && y < state.map.height) {
-                sgp_rect dst = {xx, yy, state.mask.spriteW*state.mask.scale, state.mask.spriteH*state.mask.scale};
+                sgp_rect dst = {xx, yy, state.map.tileW*state.camera.zoom, state.map.tileH*state.camera.zoom};
                 tyPoint *src = &state.ty.map[tile->mask];
                 if (src->x == -1 || src->y == -1) {
                     sgp_draw_filled_rect(dst.x, dst.y, dst.w, dst.h);
                 } else {
-                    sgp_set_image(0, state.mask.currentAtlas->texture);
-                    sgp_draw_textured_rect(0, dst, (sgp_rect){src->x*state.mask.spriteW, src->y*state.mask.spriteH, state.mask.spriteW, state.mask.spriteH});
+                    sgp_set_image(0, MaskEditorTexture());
+                    sgp_draw_textured_rect(0, dst, (sgp_rect){src->x*state.map.tileW, src->y*state.map.tileH, state.map.tileW, state.map.tileH});
                     sgp_reset_image(0);
                 }
             }
-            sgp_draw_line(0, yy, (state.mask.spriteW*state.map.width)*state.mask.scale, yy);
+            sgp_draw_line(0, yy, (state.map.tileW*state.map.width)*state.camera.zoom, yy);
         }
     }
     if (IsPointInRect((sgp_rect){0,0,state.map.width,state.map.height}, gx, gy)) {
-        int ox = (gx * state.mask.spriteW) * state.mask.scale;
-        int oy = (gy * state.mask.spriteH) * state.mask.scale;
-        int rw = state.mask.spriteW * state.mask.scale;
-        int rh = state.mask.spriteH * state.mask.scale;
+        int ox = (gx * state.map.tileW) * state.camera.zoom;
+        int oy = (gy * state.map.tileH) * state.camera.zoom;
+        int rw = state.map.tileW * state.camera.zoom;
+        int rh = state.map.tileH * state.camera.zoom;
         DrawMaskEditorBox(ox, oy, rw, rh, (sg_color){1.f, 0.f, 0.f, 1.f});
         
         if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
@@ -337,7 +146,7 @@ static void frame(void) {
     sgp_pop_transform();
     
     if (state.map.showTooltip && !igIsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
-        if (igBegin("tooltip", &state.mask.open, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
+        if (igBegin("tooltip", &state.map.showTooltip, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
             uint8_t bitmask = state.map.grid[gy * state.map.width + gx].mask;
             char buf[9];
             memset(buf, 0, 9*sizeof(char));
@@ -390,6 +199,7 @@ static void init(void) {
     InitMaskEditor();
     InitMap();
     tyInit(&state.ty, CheckMap, state.map.width, state.map.height);
+    state.camera.zoom = 4.f;
 }
 
 static void input(const sapp_event *e) {
