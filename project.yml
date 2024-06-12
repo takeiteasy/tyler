@@ -11,19 +11,6 @@ settings:
   CLANG_WARN_DOCUMENTATION_COMMENTS: false
 
 targets:
-  cimgui:
-    type: library.dynamic
-    platform: macOS
-    sources:
-        - path: deps/cimgui
-          includes:
-            - "cimgui.*"
-        - path: deps/cimgui/imgui/
-          includes:
-            - "*.cpp"
-    settings:
-        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps/cimgui,
-                              $(PROJECT_DIR)/deps/cimgui/imgui]
   tyler:
     type: tool
     platform: macOS
@@ -48,26 +35,25 @@ targets:
         - sdk: Quartz.framework
     settings:
         HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps,
-                              $(PROJECT_DIR)/deps/sokol_helpers,
-                              $(PROJECT_DIR)/src,
-                              $(PROJECT_DIR)/deps/cimgui,
-                              $(PROJECT_DIR)/deps/cimgui/imgui]
+                              $(PROJECT_DIR)/deps/imgui]
         OTHER_CFLAGS: [-x objective-c,
-                       -DSOKOL_METAL,
                        -fobjc-arc]
-  ty_example:
-    type: tool
-    platform: macOS
-    source:
-        - path: src/test.c
-    dependencies:
-        - sdk: Cocoa.framework
-        - sdk: Metal.framework
-        - sdk: MetalKit.framework
-        - sdk: Quartz.framework
     settings:
-        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps,
-                              $(PROJECT_DIR)/deps/sokol_helpers]
+        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps/]
         OTHER_CFLAGS: [-x objective-c,
                        -DSOKOL_METAL,
                        -fobjc-arc]
+  cimgui:
+    type: library.dynamic
+    platform: macOS
+    sources:
+        - path: deps/
+          includes:
+            - "cimgui.*"
+        - path: deps/imgui/
+          includes:
+            - "*.cpp"
+    settings:
+        HEADER_SEARCH_PATHS: [$(PROJECT_DIR)/deps/,
+                              $(PROJECT_DIR)/deps/imgui]
+  

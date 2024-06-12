@@ -1,6 +1,6 @@
 [submodule "deps/sokol_helpers"]
 	path = deps/sokol_helpers
 	url = git@github.com:takeiteasy/sokol_helpers.git
-[submodule "deps/cimgui"]
-	path = deps/cimgui
-	url = https://github.com/cimgui/cimgui.git
+[submodule "deps/imgui"]
+	path = deps/imgui
+	url = https://github.com/ocornut/imgui.git

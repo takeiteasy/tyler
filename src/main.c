@@ -1,20 +1,8 @@
-#define TY_IMPL
-#include "ty.h"
-#define SOKOL_HELPER_IMPL
-#include "sokol_helpers/sokol_input.h"
-#include "sokol_helpers/sokol_img.h"
-#include "sokol_helpers/sokol_scalefactor.h"
-#include "sokol_helpers/sokol_generic.h"
-#define SOKOL_IMPL
-#include "sokol_gfx.h"
-#include "sokol_gp.h"
-#include "sokol_app.h"
-#include "sokol_glue.h"
-#include "sokol_log.h"
-#include "sokol_time.h"
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "cimgui/cimgui.h"
-#include "sokol_imgui.h"
+#include "tyler.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
 
 typedef struct {
     sg_image texture;
@@ -418,11 +406,10 @@ static void cleanup(void) {
     sg_shutdown();
 }
 
-// Implement application main through Sokol APP.
 sapp_desc sokol_main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
-    return (sapp_desc){
+    return (sapp_desc) {
         .init_cb = init,
         .frame_cb = frame,
         .event_cb = input,
