@@ -3,6 +3,21 @@
 > [!WARNING]
 > Work in progress
 
+Tyler is a autotiled map editor + exporter based on Godot's autotiler. Tyler comes with a library to implement autotiling in your own game/engine.
+
+## Features
+
+- [ ] 2x2 mode (TODO)
+- [ ] 3x3 mode (implemented but needs adding to menus)
+- [X] 3x3 simplified mode
+- [ ] Export + import maps + autotile masks
+- [X] Accompanying library -- [ty.h](/src/ty.h)
+- [ ] Documentation + example for ```ty.h```
+
+## Preview
+
+![Screenshot](/assets/screenshot.png)
+
 ## LICENSE
 ```
 The MIT License (MIT)
