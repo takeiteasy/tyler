@@ -23,7 +23,7 @@ typedef enum {
 
 typedef enum {
     TY_OK = 0,
-    TY_TILE_OFF,
+    TY_DEAD_TILE,
     TY_NO_MATCH
 } tyResultType;
 
@@ -57,11 +57,14 @@ void tyInit(tyState *state, tyCallback callback, int gridW, int gridH) {
         state->map[i] = (tyPoint){-1,-1};
 }
 
+#include <stdio.h>
+
 void tyReadNeighbours(tyState *state, int x, int y, tyNeighbours *dst) {
-    for (int yy = -1; yy < 3; yy++)
-        for (int xx = -1; xx < 3; xx++) {
-            int dx = x + xx, dy = y + xx;
-            dst->grid[(yy+1)*3+(xx+1)] = dx < 0 || dy < 0 || dx >= state->gridWidth || dy >= state->gridHeight ? 0 : state->callback(x, y);
+    for (int yy = 0; yy < 3; yy++)
+        for (int xx = 0; xx < 3; xx++) {
+            int dx = x + (xx-1);
+            int dy = y + (yy-1);
+            dst->grid[yy*3+xx] = dx < 0 || dy < 0 || dx >= state->gridWidth || dy >= state->gridHeight ? 0 : state->callback(dx, dy);
         }
     dst->x = x;
     dst->y = y;
@@ -87,15 +90,17 @@ mask->grid[(N)] = !mask->grid[(A)] || !mask->grid[(B)] ? 0 : mask->grid[(N)];
 }
 
 uint8_t tyBitmaskAt(tyState *state, tyMaskType type, int gridX, int gridY) {
-    if (!state->callback(gridX, gridY))
-        return -1; // Target tile is dead
     tyNeighbours neighbours;
     tyReadNeighbours(state, gridX, gridY, &neighbours);
     return tyBitmask(&neighbours, 1);
 }
 
 tyResultType tyCalcTile(tyState *state, tyMaskType type, int gridX, int gridY, tyPoint *out) {
-    uint8_t mask = tyBitmaskAt(state, type, gridX, gridY);
+    if (!state->callback(gridX, gridY))
+        return TY_DEAD_TILE; // Target tile is dead
+    tyNeighbours neighbours;
+    tyReadNeighbours(state, gridX, gridY, &neighbours);
+    uint8_t mask = tyBitmask(&neighbours, 1);
     tyPoint *p = &state->map[mask];
     if (p->x == -1 || p->y == -1)
         return TY_NO_MATCH;

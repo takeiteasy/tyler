@@ -8,7 +8,6 @@
 #ifndef tyler_h
 #define tyler_h
 
-#include "ty.h"
 #include "sokol_helpers/sokol_input.h"
 #include "sokol_helpers/sokol_img.h"
 #include "sokol_helpers/sokol_scalefactor.h"
@@ -22,5 +21,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui.h"
 #include "sokol_imgui.h"
+
+#include "ty.h"
 
 #endif /* tyler_h */

@@ -16,8 +16,6 @@ targets:
     platform: macOS
     sources:
         - path: src/
-          excludes:
-            - "test.c"
         - path: build/
           type: folder
         - path: deps/

@@ -91,19 +91,6 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_pop_transform();
     sgp_reset_image(0);
     
-    int mx = sapp_cursor_x(), my = sapp_cursor_y();
-    if (IsPointInRect((sgp_rect){cx, cy, cw, ch}, mx, my)) {
-        int gw = state.spriteW*state.scale;
-        int gh = state.spriteH*state.scale;
-        int gx = (mx - cx)/gw;
-        int gy = (my - cy)/gh;
-        int ox = MAX(gx * gw, 1);
-        int oy = MAX(gy * gh, 1);
-        int dx = ox + gw >= cw ? gw-2 : gw;
-        int dy = oy + gh >= ch ? gh-2 : gh;
-        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 1.f, 1.f, 1.f});
-    }
-    
     if (state.currentBitmask != NULL) {
         int gw = state.spriteW*state.scale;
         int gh = state.spriteH*state.scale;
@@ -111,7 +98,7 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
         float oy = MAX(state.currentBitmask->y * gh, 1);
         int dx = ox + gw >= cw ? gw-2 : gw;
         int dy = oy + gh >= ch ? gh-2 : gh;
-        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 0.f, 0.f, 1.f});
+        DrawMaskEditorBox(ox, oy, dx, dy, (sg_color){1.f, 1.f, 1.f, 1.f});
     }
     
     sgp_set_image(0, state.cross);
