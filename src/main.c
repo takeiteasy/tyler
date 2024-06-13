@@ -106,6 +106,14 @@ static void frame(void) {
         sapp_was_key_released(SAPP_KEYCODE_M))
         ToggleMaskEditor();
     
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
+        sapp_was_key_released(SAPP_KEYCODE_I))
+        state.cameraInfoOpen = !state.cameraInfoOpen;
+    
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
+        sapp_was_key_released(SAPP_KEYCODE_G))
+        ToggleGrid();
+        
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) && sapp_check_scrolled())
         state.camera.zoom = CLAMP(state.camera.zoom - sapp_scroll_y(), 16.f, 512.f);
     
@@ -135,14 +143,15 @@ static void frame(void) {
     state.worldX = (int)((state.worldX + state.camera.x) / state.tileW);
     state.worldY = (int)((state.worldY + state.camera.y) / state.tileH);
     
-    static bool cameraOpen = true;
-    if (igBegin("Camera", &cameraOpen, ImGuiWindowFlags_None)) {
-        igText("Position: %f, %f", state.camera.x, state.camera.y);
-        igText("Zoom: %f", state.camera.zoom);
-        igText("Mouse: %d, %d", state.mouseX, state.mouseY);
-        igText("Grid: %d, %d", state.worldX, state.worldY);
+    if (state.cameraInfoOpen) {
+        if (igBegin("Camera", &state.cameraInfoOpen, ImGuiWindowFlags_None)) {
+            igText("Position: %f, %f", state.camera.x, state.camera.y);
+            igText("Zoom: %f", state.camera.zoom);
+            igText("Mouse: %d, %d", state.mouseX, state.mouseY);
+            igText("Grid: %d, %d", state.worldX, state.worldY);
+        }
+        igEnd();
     }
-    igEnd();
     
     if (state.worldX >= 0 && state.worldY >= 0 &&
         state.worldX < state.mapW && state.worldY < state.mapH) {
