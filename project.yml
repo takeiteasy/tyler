@@ -16,6 +16,10 @@ targets:
     platform: macOS
     sources:
         - path: src/
+        - path: deps/osdialog
+          includes:
+            - "osdialog.[ch]"
+            - "osdialog_mac.m"
         - path: build/
           type: folder
         - path: deps/

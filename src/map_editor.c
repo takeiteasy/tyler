@@ -9,20 +9,28 @@
 
 static struct {
     bool *grid;
-    int width, height;
+    int gridW, gridH;
+    int tmpGridW, tmpGridH;
     int tileW, tileH;
     bool drawGrid;
+    bool open;
+    struct {
+        bool grid[9];
+    } anchor;
 } state;
 
 void InitMap(int width, int height) {
-    state.width = width;
-    state.height = height;
+    state.tmpGridW = state.gridW = width;
+    state.tmpGridH = state.gridH = height;
     state.tileW = 8;
     state.tileH = 8;
     state.drawGrid = true;
+    state.open = false;
     size_t sz = width * height * sizeof(bool);
     state.grid = malloc(sz);
     memset(state.grid, 0, sz);
+    memset(state.anchor.grid, 0, 9 * sizeof(bool));
+    state.anchor.grid[0] = true;
 }
 
 void DestroyMap(void) {
@@ -31,11 +39,11 @@ void DestroyMap(void) {
 }
 
 int CheckMap(int x, int y) {
-    return (int)state.grid[y * state.width + x];
+    return (int)state.grid[y * state.gridW + x];
 }
 
 void ToggleMap(int x, int y) {
-    int i = y * state.width + x;
+    int i = y * state.gridW + x;
     state.grid[i] = !state.grid[i];
 }
 
@@ -48,22 +56,24 @@ bool* MapDrawGrid(void) {
 }
 
 void SetMap(int x, int y, bool v) {
-    state.grid[y * state.width + x] = v;
+    state.grid[y * state.gridW + x] = v;
 }
 
-void DrawMap(tyState *ty) {
+extern void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color);
+
+void DrawMap(tyState *ty, int mouseX, int mouseY) {
     sgp_set_color(1.f, 1.f, 1.f, 1.f);
     if (state.drawGrid)
-        for (int x = 0; x < state.width+1; x++) {
+        for (int x = 0; x < state.gridW+1; x++) {
             float xx = x * state.tileW;
-            sgp_draw_line(xx, 0, xx, (state.tileH*state.height));
-            for (int y = 0; y < state.height+1; y++) {
+            sgp_draw_line(xx, 0, xx, (state.tileH*state.gridH));
+            for (int y = 0; y < state.gridH+1; y++) {
                 float yy = y * state.tileH;
-                sgp_draw_line(0, yy, (state.tileW*state.width), yy);
+                sgp_draw_line(0, yy, (state.tileW*state.gridW), yy);
             }
         }
-    for (int x = 0; x < state.width; x++)
-        for (int y = 0; y < state.height; y++) {
+    for (int x = 0; x < state.gridW; x++)
+        for (int y = 0; y < state.gridH; y++) {
             sgp_rect dst = {x*state.tileW, y*state.tileH, state.tileW, state.tileH};
             tyPoint p;
             switch (tyCalcTile(ty, TY_3X3_MINIMAL, x, y, &p)) {
@@ -80,5 +90,62 @@ void DrawMap(tyState *ty) {
                     break;
             }
         }
+    if (mouseX >= 0 && mouseY >= 0 && mouseX < state.gridW && mouseY < state.gridH)
+        DrawMaskEditorBox(mouseX*state.tileW, mouseY*state.tileH, state.tileW, state.tileH, (sg_color){1.f, 0.f, 0.f, 1.f});
     sgp_reset_color();
+    
+    if (!state.open)
+        return;
+    
+    if (igBegin("Map Editor", &state.open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        igText("Anchor:");
+        if (igBeginTable("button_grid2", 3, ImGuiTableFlags_NoBordersInBody, (ImVec2){165,150}, 50)) {
+            int newSelection = -1;
+            for (int y = 0; y < 3; y++) {
+                igTableNextRow(ImGuiTableRowFlags_None, 50);
+                for (int x = 0; x < 3; x++) {
+                    igTableSetColumnIndex(x);
+                    int i = y * 3 + x;
+                    bool b = state.anchor.grid[i];
+                    igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
+                    static const char *labels[9] = {
+                        "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
+                    };
+                    if (igButton(labels[i], (ImVec2){50, 50}))
+                        newSelection = i;
+                    igPopStyleColor(1);
+                }
+            }
+            if (newSelection > -1) {
+                printf("%d\n", newSelection);
+                memset(state.anchor.grid, 0, 9 * sizeof(bool));
+                state.anchor.grid[newSelection] = true;
+            }
+            igEndTable();
+        }
+        igSeparator();
+        igText("Map Size:");
+        igDragInt("Width", &state.tmpGridW, 1, 8, 512, "%d", ImGuiSliderFlags_None);
+        igDragInt("Height", &state.tmpGridH, 1, 8, 512, "%d", ImGuiSliderFlags_None);
+        state.tmpGridW = CLAMP(state.tmpGridW, 8, 512);
+        state.tmpGridH = CLAMP(state.tmpGridH, 8, 512);
+        if (igButton("Apply", (ImVec2){0,0}) && (state.tmpGridW != state.gridW || state.tmpGridH != state.gridH)) {
+            // TODO: Resize map
+        }
+        igSeparator();
+        igAlignTextToFramePadding();
+        igText("Clear map:");
+        igSameLine(0, 50);
+        if (igButton("CLEAR", (ImVec2){0,0})) // TODO: Add yes/no dialog
+            memset(state.grid, 0, state.gridW * state.gridH * sizeof(bool));
+    }
+    igEnd();
+}
+
+bool* MapEditorIsOpen(void) {
+    return &state.open;
+}
+
+void ToggleMapEditor(void) {
+    state.open = !state.open;
 }

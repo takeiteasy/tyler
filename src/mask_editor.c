@@ -8,10 +8,6 @@
 #include "mask_editor.h"
 #include <stdlib.h>
 
-#ifndef MAX
-#define MAX(A, B) ((A) > (B) ? (A) : (B))
-#endif
-
 typedef struct {
     sg_image texture;
     int width, height;
@@ -135,6 +131,7 @@ void DrawMaskEditor(tyState *ty) {
     
     igSetNextWindowSize(maskEditSize, ImGuiCond_Once);
     if (igBegin("Mask Editor", &state.open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        igText("Mask View:");
         if (igBeginChild_Str("Mask Editor", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
             ImDrawList* dl = igGetWindowDrawList();
             ImDrawList_AddCallback(dl, igDrawMaskEditorCb, NULL);
@@ -178,6 +175,7 @@ void DrawMaskEditor(tyState *ty) {
         
         if (state.currentBitmask) {
             maskEditSize.y += 10;
+            igText("Mask Editor:");
             if (igBeginChild_Str("Button Grid", maskEditSize, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
                 uint8_t bitmask = tyBitmask(state.currentBitmask, 0);
                 char buf[9];
@@ -202,11 +200,11 @@ void DrawMaskEditor(tyState *ty) {
                     }
                     igEndTable();
                 }
-                igEndChild();
             }
+            igEndChild();
         }
-        igEnd();
     }
+    igEnd();
 }
 
 void ToggleMaskEditor(void) {

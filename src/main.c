@@ -7,10 +7,6 @@
 
 extern sgp_vec2 sgp_test_projection(sgp_vec2 p);
 
-#define MIN(A, B) ((A) < (B) ? (A) : (B))
-#define MAX(A, B) ((A) > (B) ? (A) : (B))
-#define CLAMP(V, MI, MA) MIN(MAX((V), (MI)), (MA))
-
 typedef struct {
     float x, y;
     float zoom;
@@ -102,26 +98,31 @@ static void frame(void) {
     
     igSetNextWindowPos((ImVec2){0,0}, ImGuiCond_Once, (ImVec2){0,0});
     igSetNextWindowSize((ImVec2){width, 10}, ImGuiCond_Once);
-    if (igBegin("Main Menu", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
-        if (igBeginMenuBar()) {
-            if (igBeginMenu("File", true)) {
-                igEndMenu();
-            }
-            igEndMenuBar();
+    igBegin("Main Menu", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+    if (igBeginMenuBar()) {
+        if (igBeginMenu("File", true)) {
+            igEndMenu();
         }
-        if (igBeginMenuBar()) {
-            if (igBeginMenu("View", true)) {
-                if (igMenuItem_BoolPtr("Mask Editor", "Ctrl+M", MaskEditorIsOpen(), true)) {}
-                if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.cameraInfoOpen, true)) {}
-                if (igMenuItem_BoolPtr("Draw Grid", "Ctrl+G", MapDrawGrid(), true)) {}
-                igEndMenu();
-            }
-            igEndMenuBar();
-        }
-        igEnd();
+        igEndMenuBar();
     }
-    
+    if (igBeginMenuBar()) {
+        if (igBeginMenu("View", true)) {
+            if (igMenuItem_BoolPtr("Map Editor", "Ctrl+E", MapEditorIsOpen(), true)) {}
+            if (igMenuItem_BoolPtr("Mask Editor", "Ctrl+M", MaskEditorIsOpen(), true)) {}
+            if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.cameraInfoOpen, true)) {}
+            if (igMenuItem_BoolPtr("Show Tooltip", NULL, &state.showTooltip, true)) {}
+            if (igMenuItem_BoolPtr("Draw Grid", "Ctrl+G", MapDrawGrid(), true)) {}
+            igEndMenu();
+        }
+        igEndMenuBar();
+    }
+    igEnd();
+
     DrawMaskEditor(&state.ty);
+    
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
+        sapp_was_key_released(SAPP_KEYCODE_E))
+        ToggleMapEditor();
     
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_M))
@@ -154,9 +155,6 @@ static void frame(void) {
     float adjustedBottom = viewVolumeBottom + state.camera.y;
     float adjustedTop = viewVolumeTop + state.camera.y;
     sgp_project(adjustedLeft, adjustedRight, adjustedBottom, adjustedTop);
-//    sgp_project(0, width, 0, height);
-    DrawMap(&state.ty);
-    
     state.mouseX = sapp_cursor_x();
     state.mouseY = sapp_cursor_y();
     state.worldX = state.mouseX * (viewVolumeRight - viewVolumeLeft) / width + viewVolumeLeft;
@@ -164,14 +162,16 @@ static void frame(void) {
     state.worldX = (int)((state.worldX + state.camera.x) / state.tileW);
     state.worldY = (int)((state.worldY + state.camera.y) / state.tileH);
     
+    DrawMap(&state.ty, state.worldX, state.worldY);
+    
     if (state.cameraInfoOpen) {
-        if (igBegin("Camera", &state.cameraInfoOpen, ImGuiWindowFlags_None)) {
+        if (igBegin("Camera", &state.cameraInfoOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
             igText("Position: %f, %f", state.camera.x, state.camera.y);
             igText("Zoom: %f", state.camera.zoom);
             igText("Mouse: %d, %d", state.mouseX, state.mouseY);
             igText("Grid: %d, %d", state.worldX, state.worldY);
-            igEnd();
         }
+        igEnd();
     }
     
     if (state.worldX >= 0 && state.worldY >= 0 &&
@@ -193,8 +193,8 @@ static void frame(void) {
                     igText("tile: %d, %d - mask: %d,0x%x,0b%s\n", state.worldX, state.worldY, bitmask, bitmask, buf);
                     igEndTooltip();
                 }
+                igEnd();
             }
-            igEnd();
         }
     }
     

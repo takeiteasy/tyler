@@ -4,3 +4,6 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "deps/osdialog"]
+	path = deps/osdialog
+	url = https://github.com/AndrewBelt/osdialog.git

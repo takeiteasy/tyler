@@ -20,6 +20,8 @@ void ToggleMap(int x, int y);
 void ToggleGrid(void);
 bool* MapDrawGrid(void);
 void SetMap(int x, int y, bool v);
-void DrawMap(tyState *ty);
+void DrawMap(tyState *ty, int mouseX, int mouseY);
+bool* MapEditorIsOpen(void);
+void ToggleMapEditor(void);
 
 #endif /* map_editor_h */

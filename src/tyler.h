@@ -21,7 +21,10 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui.h"
 #include "sokol_imgui.h"
-
 #include "ty.h"
+
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#define CLAMP(V, MI, MA) MIN(MAX((V), (MI)), (MA))
 
 #endif /* tyler_h */
