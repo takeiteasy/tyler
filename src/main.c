@@ -61,7 +61,7 @@ static void init(void) {
     InitMap(state.mapW, state.mapH);
     InitMaskEditor();
     tyInit(&state.ty, CheckMap, state.mapW, state.mapH);
-    state.cameraInfoOpen = true;
+    state.cameraInfoOpen = false;
     state.showTooltip = true;
 }
 
@@ -99,6 +99,27 @@ static void frame(void) {
         .dpi_scale = sapp_dpi_scale()
     };
     simgui_new_frame(&igFrameDesc);
+    
+    igSetNextWindowPos((ImVec2){0,0}, ImGuiCond_Once, (ImVec2){0,0});
+    igSetNextWindowSize((ImVec2){width, 10}, ImGuiCond_Once);
+    if (igBegin("Main Menu", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
+        if (igBeginMenuBar()) {
+            if (igBeginMenu("File", true)) {
+                igEndMenu();
+            }
+            igEndMenuBar();
+        }
+        if (igBeginMenuBar()) {
+            if (igBeginMenu("View", true)) {
+                if (igMenuItem_BoolPtr("Mask Editor", "Ctrl+M", MaskEditorIsOpen(), true)) {}
+                if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.cameraInfoOpen, true)) {}
+                if (igMenuItem_BoolPtr("Draw Grid", "Ctrl+G", MapDrawGrid(), true)) {}
+                igEndMenu();
+            }
+            igEndMenuBar();
+        }
+        igEnd();
+    }
     
     DrawMaskEditor(&state.ty);
     
@@ -149,8 +170,8 @@ static void frame(void) {
             igText("Zoom: %f", state.camera.zoom);
             igText("Mouse: %d, %d", state.mouseX, state.mouseY);
             igText("Grid: %d, %d", state.worldX, state.worldY);
+            igEnd();
         }
-        igEnd();
     }
     
     if (state.worldX >= 0 && state.worldY >= 0 &&

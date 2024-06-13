@@ -36,7 +36,7 @@ void InitMaskEditor(void) {
     state.cross = sg_load_texture_path("/Users/george/git/tyler/assets/x.png");
     state.currentAtlas = &state.default_3x3;
     
-    state.open = true;
+    state.open = false;
     state.scale = 4.f;
     
     state.spriteW = state.spriteH = 8;
@@ -153,8 +153,8 @@ void DrawMaskEditor(tyState *ty) {
                         state.currentBitmask = &state.grid[y * state.spriteX + x];
                     }
                 }
+            igEndChild();
         }
-        igEndChild();
         
         
         for (int i = 0; i < 256; i++)
@@ -202,11 +202,11 @@ void DrawMaskEditor(tyState *ty) {
                     }
                     igEndTable();
                 }
+                igEndChild();
             }
-            igEndChild();
         }
+        igEnd();
     }
-    igEnd();
 }
 
 void ToggleMaskEditor(void) {
@@ -215,4 +215,8 @@ void ToggleMaskEditor(void) {
 
 sg_image MaskEditorTexture(void) {
     return state.currentAtlas ? state.currentAtlas->texture : (sg_image){SG_INVALID_ID};
+}
+
+bool* MaskEditorIsOpen(void) {
+    return &state.open;
 }

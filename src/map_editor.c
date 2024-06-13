@@ -43,6 +43,10 @@ void ToggleGrid(void) {
     state.drawGrid = !state.drawGrid;
 }
 
+bool* MapDrawGrid(void) {
+    return &state.drawGrid;
+}
+
 void SetMap(int x, int y, bool v) {
     state.grid[y * state.width + x] = v;
 }

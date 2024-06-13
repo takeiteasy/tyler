@@ -15,5 +15,6 @@ void DestroyMaskEditor(void);
 void DrawMaskEditor(tyState *ty);
 void ToggleMaskEditor(void);
 sg_image MaskEditorTexture(void);
+bool* MaskEditorIsOpen(void);
 
 #endif /* mask_editor_h */

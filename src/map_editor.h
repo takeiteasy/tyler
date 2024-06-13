@@ -18,6 +18,7 @@ void DestroyMap(void);
 int CheckMap(int x, int y);
 void ToggleMap(int x, int y);
 void ToggleGrid(void);
+bool* MapDrawGrid(void);
 void SetMap(int x, int y, bool v);
 void DrawMap(tyState *ty);
 
