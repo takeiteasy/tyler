@@ -117,7 +117,6 @@ void DrawMap(tyState *ty, int mouseX, int mouseY) {
                 }
             }
             if (newSelection > -1) {
-                printf("%d\n", newSelection);
                 memset(state.anchor.grid, 0, 9 * sizeof(bool));
                 state.anchor.grid[newSelection] = true;
             }

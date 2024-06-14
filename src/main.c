@@ -63,8 +63,7 @@ static void init(void) {
 }
 
 static void input(const sapp_event *e) {
-    simgui_handle_event(e);
-    if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+    if (!simgui_handle_event(e) && !igIsWindowHovered(ImGuiHoveredFlags_AnyWindow))
         sokol_input_handler(e);
 }
 
