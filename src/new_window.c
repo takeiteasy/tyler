@@ -80,8 +80,10 @@ void DrawNewWindow(void) {
             osdialog_filters *filter = osdialog_filters_parse("Images:jpg,jpeg,png,bmp,psd,tga,hdr,pic,ppm,pgm,qoi");
             char *filename = osdialog_file(OSDIALOG_OPEN, CurrentDirectory(), NULL, filter);
             if (filename) {
+                memset(path, 0, MAX_PATH * sizeof(char));
                 memcpy(path, filename, MIN(strlen(filename), MAX_PATH) * sizeof(char));
                 free(filename);
+                sokol_helper_destroy(state.preview);
             }
             osdialog_filters_free(filter);
         }
@@ -165,12 +167,12 @@ void DrawNewWindow(void) {
             igText("Preview:");
             igSameLine(0, 5);
             if (igButton("+", (ImVec2){0,0}) &&
-                state.atlasW * state.previewScale < sizeX &&
-                state.atlasH * state.previewScale < size.y)
-                state.previewScale += .5f;
+                state.atlasW * (state.previewScale + .25f) < sizeX &&
+                state.atlasH * (state.previewScale + .25f) < size.y)
+                state.previewScale += .25f;
             igSameLine(0, 5);
             if (igButton("-", (ImVec2){0,0}))
-                state.previewScale = MAX(state.previewScale - .5f, .5f);
+                state.previewScale = MAX(state.previewScale - .25f, .5f);
             if (igBeginChild_Str("Preview", size, true, ImGuiWindowFlags_None)) {
                 ImDrawList* dl = igGetWindowDrawList();
                 ImDrawList_AddCallback(dl, igDrawPreviewCb, NULL);

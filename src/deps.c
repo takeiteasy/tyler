@@ -8,6 +8,7 @@
 #define TY_IMPL
 #define SOKOL_HELPER_IMPL
 #define SOKOL_IMGUI_IMPL
+#define EZ_IMPLEMENTATION
 #include "tyler.h"
 #define SOKOL_IMPL
 #include "sokol_gfx.h"
@@ -16,5 +17,3 @@
 #include "sokol_glue.h"
 #include "sokol_log.h"
 #include "sokol_time.h"
-#define EZ_IMPLEMENTATION
-#include "ez/ezfs.h"
