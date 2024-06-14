@@ -54,7 +54,7 @@ static void init(void) {
     state.mapH = 32;
     state.tileW = 8;
     state.tileH = 8;
-    InitMap(state.mapW, state.mapH);
+    InitMap(state.mapW, state.mapH, state.tileW, state.tileH);
     InitMaskEditor();
     tyInit(&state.ty, CheckMap, state.mapW, state.mapH);
     state.showCameraInfo = false;

@@ -19,16 +19,23 @@ static struct {
     } anchor;
 } state;
 
-void InitMap(int width, int height) {
-    state.tmpGridW = state.gridW = width;
-    state.tmpGridH = state.gridH = height;
-    state.tileW = 8;
-    state.tileH = 8;
-    state.drawGrid = true;
-    state.open = false;
-    size_t sz = width * height * sizeof(bool);
+void ResetMap(int gridW, int gridH, int tileW, int tileH) {
+    if (state.grid)
+        free(state.grid);
+    state.tmpGridW = state.gridW = gridW;
+    state.tmpGridH = state.gridH = gridH;
+    state.tileW = tileW;
+    state.tileH = tileH;
+    size_t sz = gridW * gridH * sizeof(bool);
     state.grid = malloc(sz);
     memset(state.grid, 0, sz);
+}
+
+void InitMap(int gridW, int gridH, int tileW, int tileH) {
+    state.drawGrid = true;
+    state.open = false;
+    state.grid = NULL;
+    ResetMap(gridW, gridH, tileW, tileH);
     memset(state.anchor.grid, 0, 9 * sizeof(bool));
     state.anchor.grid[0] = true;
 }
@@ -65,10 +72,6 @@ void SetMap(int x, int y, bool v) {
 }
 
 extern void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color);
-
-void ClearMap(void) {
-    memset(state.grid, 0, state.gridW * state.gridH * sizeof(bool));
-}
 
 void DrawMap(tyState *ty, int mouseX, int mouseY) {
     sgp_set_color(1.f, 1.f, 1.f, 1.f);
@@ -145,7 +148,7 @@ void DrawMap(tyState *ty, int mouseX, int mouseY) {
         igText("Clear map:");
         igSameLine(0, 5);
         if (igButton("CLEAR", (ImVec2){0,0})) // TODO: Add yes/no dialog
-            ClearMap();
+            memset(state.grid, 0, state.gridW * state.gridH * sizeof(bool));
     }
     igEnd();
 }

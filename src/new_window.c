@@ -215,7 +215,7 @@ void DrawNewWindow(void) {
             
             if (igButton("Start", (ImVec2){0,0})) {
                 ChangeTexture(state.preview, state.atlasW, state.atlasH, state.tileW, state.tileH);
-                ClearMap();
+                ResetMap(state.gridW, state.gridH, state.tileW, state.tileH);
                 state.preview.id = SG_INVALID_ID;
                 state.open = false;
             }

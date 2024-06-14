@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-void InitMap(int width, int height);
+void InitMap(int gridW, int gridH, int tileW, int tileH);
 void DestroyMap(void);
 int CheckMap(int x, int y);
 void ToggleMap(int x, int y);
@@ -23,7 +23,7 @@ void SetMap(int x, int y, bool v);
 void SetMapTileSize(int w, int h);
 void DrawMap(tyState *ty, int mouseX, int mouseY);
 bool* MapEditorIsOpen(void);
-void ClearMap(void);
+void ResetMap(int gridW, int gridH, int tileW, int tileH);
 void ToggleMapEditor(void);
 
 #endif /* map_editor_h */
