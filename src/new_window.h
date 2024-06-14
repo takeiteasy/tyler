@@ -9,6 +9,8 @@
 #define new_window_h
 
 #include "tyler.h"
+#include "mask_editor.h"
+#include "map_editor.h"
 #include <stdlib.h>
 #include <math.h>
 

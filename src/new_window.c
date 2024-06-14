@@ -36,6 +36,9 @@ static const char *validExtensions[11] = {
 extern int IsPointInRect(sgp_rect r, int x, int y);
 
 static void igDrawPreviewCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
+    if (sg_query_state(state.preview) != SG_RESOURCESTATE_VALID)
+        return;
+    
     int cx = (int)cmd->ClipRect.x;
     int cy = (int)cmd->ClipRect.y;
     int cw = (int)(cmd->ClipRect.z - cmd->ClipRect.x);
@@ -68,7 +71,6 @@ static void igDrawPreviewCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
 }
 
 int ClearSkipFlag(ImGuiInputTextCallbackData* _) {
-    printf("test\n");
     state.skipLoad = false;
     return 1;
 }
@@ -210,6 +212,13 @@ void DrawNewWindow(void) {
                 ImDrawList_AddCallback(dl, igDrawPreviewCb, NULL);
             }
             igEndChild();
+            
+            if (igButton("Start", (ImVec2){0,0})) {
+                ChangeTexture(state.preview, state.atlasW, state.atlasH, state.tileW, state.tileH);
+                ClearMap();
+                state.preview.id = SG_INVALID_ID;
+                state.open = false;
+            }
         }
     }
     igEnd();

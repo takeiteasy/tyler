@@ -33,6 +33,11 @@ void InitMap(int width, int height) {
     state.anchor.grid[0] = true;
 }
 
+void SetMapTileSize(int w, int h) {
+    state.tileW = w;
+    state.tileH = h;
+}
+
 void DestroyMap(void) {
     if (state.grid)
         free(state.grid);
@@ -60,6 +65,10 @@ void SetMap(int x, int y, bool v) {
 }
 
 extern void DrawMaskEditorBox(float x, float y, float w, float h, sg_color color);
+
+void ClearMap(void) {
+    memset(state.grid, 0, state.gridW * state.gridH * sizeof(bool));
+}
 
 void DrawMap(tyState *ty, int mouseX, int mouseY) {
     sgp_set_color(1.f, 1.f, 1.f, 1.f);
@@ -134,9 +143,9 @@ void DrawMap(tyState *ty, int mouseX, int mouseY) {
         igSeparator();
         igAlignTextToFramePadding();
         igText("Clear map:");
-        igSameLine(0, 50);
+        igSameLine(0, 5);
         if (igButton("CLEAR", (ImVec2){0,0})) // TODO: Add yes/no dialog
-            memset(state.grid, 0, state.gridW * state.gridH * sizeof(bool));
+            ClearMap();
     }
     igEnd();
 }

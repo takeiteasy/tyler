@@ -6,7 +6,6 @@
 //
 
 #include "mask_editor.h"
-#include <stdlib.h>
 
 typedef struct {
     sg_image texture;
@@ -24,7 +23,22 @@ static struct {
     Texture *currentAtlas;
     sg_image cross;
     tyNeighbours *currentBitmask;
+    sg_image tmp;
 } state;
+
+static void ResetBitmaskGrid(void) {
+    if (state.grid)
+        free(state.grid);
+    state.grid = malloc(state.spriteX * state.spriteY * sizeof(tyNeighbours));
+    for (int x = 0; x < state.spriteX; x++)
+        for (int y = 0; y < state.spriteY; y++) {
+            tyNeighbours *mask = &state.grid[y * state.spriteX + x];
+            memset(mask->grid, 0, sizeof(int) * 9);
+            mask->x = x;
+            mask->y = y;
+        }
+    state.currentBitmask = NULL;
+}
 
 void InitMaskEditor(void) {
     state.default_2x2.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_2x2.png", &state.default_2x2.width, &state.default_2x2.height);
@@ -38,15 +52,28 @@ void InitMaskEditor(void) {
     state.spriteW = state.spriteH = 8;
     state.spriteX = state.default_3x3.width / state.spriteW;
     state.spriteY = state.default_3x3.height / state.spriteH;
-    state.grid = malloc(state.spriteX * state.spriteY * sizeof(tyNeighbours));
-    for (int x = 0; x < state.spriteX; x++)
-        for (int y = 0; y < state.spriteY; y++) {
-            tyNeighbours *mask = &state.grid[y * state.spriteX + x];
-            memset(mask->grid, 0, sizeof(int) * 9);
-            mask->x = x;
-            mask->y = y;
-        }
-    state.currentBitmask = NULL;
+    state.grid = NULL;
+    ResetBitmaskGrid();
+}
+
+void ChangeTexture(sg_image texture, int textureW, int textureH, int tileW, int tileH) {
+    if (state.currentAtlas != &state.default_2x2 &&
+        state.currentAtlas != &state.default_3x3) {
+        // FIXME: Previous texture needs to be destroyed but it can't happen while being used by new window + in the current frame by mask editor
+        free(state.currentAtlas);
+    }
+    
+    state.currentAtlas = malloc(sizeof(Texture));
+    state.currentAtlas->width = textureW;
+    state.currentAtlas->height = textureH;
+    state.currentAtlas->texture = texture;
+    
+    state.spriteW = tileW;
+    state.spriteH = tileH;
+    state.spriteX = (int)floorf(textureW / tileW);
+    state.spriteY = (int)floorf(textureH / tileH);
+    
+    ResetBitmaskGrid();
 }
 
 void DestroyMaskEditor(void) {
