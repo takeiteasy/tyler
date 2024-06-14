@@ -160,3 +160,10 @@ bool* MapEditorIsOpen(void) {
 void ToggleMapEditor(void) {
     state.open = !state.open;
 }
+
+void MapDims(int *gridW, int *gridH, int *tileW, int *tileH) {
+    if (gridW) *gridW = state.gridW;
+    if (gridH) *gridH = state.gridH;
+    if (tileW) *tileW = state.tileW;
+    if (tileH) *tileH = state.tileH;
+}

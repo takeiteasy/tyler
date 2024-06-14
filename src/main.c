@@ -13,8 +13,6 @@ typedef struct {
 
 static struct {
     Camera camera;
-    int mapW, mapH;
-    int tileW, tileH;
     int mouseX, mouseY;
     int worldX, worldY;
     bool showCameraInfo;
@@ -50,13 +48,9 @@ static void init(void) {
     
     memset(&state.camera, 0, sizeof(Camera));
     state.camera.zoom = 16.f;
-    state.mapW = 32;
-    state.mapH = 32;
-    state.tileW = 8;
-    state.tileH = 8;
-    InitMap(state.mapW, state.mapH, state.tileW, state.tileH);
+    InitMap(32, 32, 8, 8);
     InitMaskEditor();
-    tyInit(&state.ty, CheckMap, state.mapW, state.mapH);
+    tyInit(&state.ty, CheckMap, 32, 32);
     state.showCameraInfo = false;
     state.showTooltip = true;
     state.showNewWindow = true;
@@ -167,8 +161,10 @@ static void frame(void) {
     state.mouseY = sapp_cursor_y();
     state.worldX = state.mouseX * (viewVolumeRight - viewVolumeLeft) / width + viewVolumeLeft;
     state.worldY = state.mouseY * (viewVolumeTop - viewVolumeBottom) / height + viewVolumeBottom;
-    state.worldX = (int)((state.worldX + state.camera.x) / state.tileW);
-    state.worldY = (int)((state.worldY + state.camera.y) / state.tileH);
+    int gridW, gridH, tileW, tileH;
+    MapDims(&gridW, &gridH, &tileW, &tileH);
+    state.worldX = (int)((state.worldX + state.camera.x) / tileW);
+    state.worldY = (int)((state.worldY + state.camera.y) / tileH);
     
     DrawMap(&state.ty, state.worldX, state.worldY);
     
@@ -184,8 +180,7 @@ static void frame(void) {
     
     DrawNewWindow();
     
-    if (state.worldX >= 0 && state.worldY >= 0 &&
-        state.worldX < state.mapW && state.worldY < state.mapH) {
+    if (state.worldX >= 0 && state.worldY >= 0 && state.worldX < gridW && state.worldY < gridH) {
         if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
             SetMap(state.worldX, state.worldY, sapp_is_button_down(SAPP_MOUSEBUTTON_LEFT));
         

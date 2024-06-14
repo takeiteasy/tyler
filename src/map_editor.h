@@ -25,5 +25,6 @@ void DrawMap(tyState *ty, int mouseX, int mouseY);
 bool* MapEditorIsOpen(void);
 void ResetMap(int gridW, int gridH, int tileW, int tileH);
 void ToggleMapEditor(void);
+void MapDims(int *gridW, int *gridH, int *tileW, int *tileH);
 
 #endif /* map_editor_h */
