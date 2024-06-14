@@ -12,6 +12,8 @@ static struct {
     int tileW, tileH;
     sg_image preview;
     int atlasW, atlasH;
+    int atlasGridW, atlasGridH;
+    ImVec4 gridColor;
     bool skipLoad;
     bool open;
     float previewScale;
@@ -23,7 +25,8 @@ static struct {
     .preview = (sg_image){SG_INVALID_ID},
     .skipLoad = false,
     .open = false,
-    .previewScale = 1.f
+    .previewScale = 1.f,
+    .gridColor = (ImVec4){1.f, 1.f, 1.f, 1.f}
 };
 
 static const char *validExtensions[11] = {
@@ -47,6 +50,20 @@ static void igDrawPreviewCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_set_image(0, state.preview);
     sgp_draw_filled_rect(0, 0, iw, ih);
     sgp_reset_image(0);
+    
+    sgp_set_color(state.gridColor.x, state.gridColor.y, state.gridColor.z, state.gridColor.w);
+    for (int x = 0; x < state.atlasGridW+1; x++) {
+        float xx = x * (state.tileW * state.previewScale);
+        float bottom = (state.atlasGridH * state.tileH) * state.previewScale;
+        sgp_draw_line(xx, 0, xx, bottom);
+        for (int y = 0; y < state.atlasGridH+1; y++) {
+            float yy = x * (state.tileH * state.previewScale);
+            float right = (state.atlasGridW * state.tileW) * state.previewScale;
+            sgp_draw_line(0, yy, right, yy);
+        }
+    }
+    
+    sgp_reset_color();
     sgp_reset_viewport();
 }
 
@@ -159,20 +176,35 @@ void DrawNewWindow(void) {
             ImVec2 size;
             igGetWindowSize(&size);
             float aspectRatio = size.x / (float)size.y;
-            float sizeX = size.x;
             size.y = size.x * aspectRatio;
             size.x = 0;
             
+            float fgridW = state.atlasW / (float)state.tileW;
+            float fgridH = state.atlasH / (float)state.tileH;
+            if (fmod(fgridW, 1.f) != 0) {
+                igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 1.f, 0.f, 1.f});
+                igText("WARNING! Atlas width is not divisible by %d!", state.tileW);
+                igPopStyleColor(1);
+            }
+            if (fmod(fgridH, 1.f) != 0) {
+                igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 1.f, 0.f, 1.f});
+                igText("WARNING! Atlas height is not divisible by %d!", state.tileH);
+                igPopStyleColor(1);
+            }
+            state.atlasGridW = (int)floorf(fgridW);
+            state.atlasGridH = (int)floorf(fgridH);
+
             igSeparator();
             igText("Preview:");
             igSameLine(0, 5);
-            if (igButton("+", (ImVec2){0,0}) &&
-                state.atlasW * (state.previewScale + .25f) < sizeX &&
-                state.atlasH * (state.previewScale + .25f) < size.y)
+            if (igButton("+", (ImVec2){0,0}))
                 state.previewScale += .25f;
             igSameLine(0, 5);
             if (igButton("-", (ImVec2){0,0}))
-                state.previewScale = MAX(state.previewScale - .25f, .5f);
+                state.previewScale = MAX(state.previewScale - .25f, .25f);
+            igSameLine(0, 5);
+            igColorEdit3("Grid Color", (float*)&state.gridColor, ImGuiColorEditFlags_NoAlpha);
+            
             if (igBeginChild_Str("Preview", size, true, ImGuiWindowFlags_None)) {
                 ImDrawList* dl = igGetWindowDrawList();
                 ImDrawList_AddCallback(dl, igDrawPreviewCb, NULL);

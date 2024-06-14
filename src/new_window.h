@@ -10,6 +10,7 @@
 
 #include "tyler.h"
 #include <stdlib.h>
+#include <math.h>
 
 void DrawNewWindow(void);
 void ShowNewWindow(void);
