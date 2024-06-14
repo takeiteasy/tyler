@@ -7,3 +7,6 @@
 [submodule "deps/osdialog"]
 	path = deps/osdialog
 	url = https://github.com/AndrewBelt/osdialog.git
+[submodule "deps/ez"]
+	path = deps/ez
+	url = git@github.com:takeiteasy/ez.git

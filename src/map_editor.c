@@ -109,7 +109,7 @@ void DrawMap(tyState *ty, int mouseX, int mouseY) {
                     bool b = state.anchor.grid[i];
                     igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
                     static const char *labels[9] = {
-                        "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
+                        "TL", "T", "TR", "L", "X", "R", "BL", "B", "BR"
                     };
                     if (igButton(labels[i], (ImVec2){50, 50}))
                         newSelection = i;

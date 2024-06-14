@@ -1,11 +1,10 @@
 #include "tyler.h"
 #include "mask_editor.h"
 #include "map_editor.h"
+#include "new_window.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
-extern sgp_vec2 sgp_test_projection(sgp_vec2 p);
 
 typedef struct {
     float x, y;
@@ -18,8 +17,9 @@ static struct {
     int tileW, tileH;
     int mouseX, mouseY;
     int worldX, worldY;
-    bool cameraInfoOpen;
+    bool showCameraInfo;
     bool showTooltip;
+    bool showNewWindow;
     tyState ty;
 } state;
 
@@ -57,8 +57,9 @@ static void init(void) {
     InitMap(state.mapW, state.mapH);
     InitMaskEditor();
     tyInit(&state.ty, CheckMap, state.mapW, state.mapH);
-    state.cameraInfoOpen = false;
+    state.showCameraInfo = false;
     state.showTooltip = true;
+    state.showNewWindow = true;
 }
 
 static void input(const sapp_event *e) {
@@ -101,6 +102,10 @@ static void frame(void) {
     igBegin("Main Menu", NULL, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     if (igBeginMenuBar()) {
         if (igBeginMenu("File", true)) {
+            if (igMenuItemEx("New", NULL, "Ctrl+N", false, true))
+                ShowNewWindow();
+            if (igMenuItemEx("Open", NULL, "Ctrl+O", false, true)) {}
+            if (igMenuItemEx("Save", NULL, "Ctrl+S", false, true)) {}
             igEndMenu();
         }
         igEndMenuBar();
@@ -109,7 +114,7 @@ static void frame(void) {
         if (igBeginMenu("View", true)) {
             if (igMenuItem_BoolPtr("Map Editor", "Ctrl+E", MapEditorIsOpen(), true)) {}
             if (igMenuItem_BoolPtr("Mask Editor", "Ctrl+M", MaskEditorIsOpen(), true)) {}
-            if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.cameraInfoOpen, true)) {}
+            if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.showCameraInfo, true)) {}
             if (igMenuItem_BoolPtr("Show Tooltip", NULL, &state.showTooltip, true)) {}
             if (igMenuItem_BoolPtr("Draw Grid", "Ctrl+G", MapDrawGrid(), true)) {}
             igEndMenu();
@@ -125,12 +130,16 @@ static void frame(void) {
         ToggleMapEditor();
     
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
+        sapp_was_key_released(SAPP_KEYCODE_N))
+        ShowNewWindow();
+
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_M))
         ToggleMaskEditor();
     
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_I))
-        state.cameraInfoOpen = !state.cameraInfoOpen;
+        state.showCameraInfo = !state.showCameraInfo;
     
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_G))
@@ -164,8 +173,8 @@ static void frame(void) {
     
     DrawMap(&state.ty, state.worldX, state.worldY);
     
-    if (state.cameraInfoOpen) {
-        if (igBegin("Camera", &state.cameraInfoOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (state.showCameraInfo) {
+        if (igBegin("Camera", &state.showCameraInfo, ImGuiWindowFlags_AlwaysAutoResize)) {
             igText("Position: %f, %f", state.camera.x, state.camera.y);
             igText("Zoom: %f", state.camera.zoom);
             igText("Mouse: %d, %d", state.mouseX, state.mouseY);
@@ -173,6 +182,8 @@ static void frame(void) {
         }
         igEnd();
     }
+    
+    DrawNewWindow();
     
     if (state.worldX >= 0 && state.worldY >= 0 &&
         state.worldX < state.mapW && state.worldY < state.mapH) {

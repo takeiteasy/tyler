@@ -189,7 +189,7 @@ void DrawMaskEditor(tyState *ty) {
                         for (int x = 0; x < 3; x++) {
                             igTableSetColumnIndex(x);
                             static const char *labels[9] = {
-                                "TL", "L", "BL", "T", "X", "B", "TR", "R", "BR"
+                                "TL", "T", "TR", "L", "X", "R", "BL", "B", "BR"
                             };
                             bool b = state.currentBitmask->grid[y * 3 + x];
                             igPushStyleColor_Vec4(ImGuiCol_Button, b ? (ImVec4){0.f, 1.f, 0.f, 1.f} : (ImVec4){1.f, 0.f, 0.f, 1.f});
