@@ -8,10 +8,53 @@
 #include "new_window.h"
 
 static struct {
+    int gridW, gridH;
+    int tileW, tileH;
+    sg_image preview;
+    int atlasW, atlasH;
+    bool skipLoad;
     bool open;
+    float previewScale;
 } state = {
-    .open = false
+    .gridW = 32,
+    .gridH = 32,
+    .tileW = 8,
+    .tileH = 8,
+    .preview = (sg_image){SG_INVALID_ID},
+    .skipLoad = false,
+    .open = false,
+    .previewScale = 1.f
 };
+
+static const char *validExtensions[11] = {
+    "jpg", "jpeg", "png", "bmp", "psd", "tga", "hdr", "pic", "ppm", "pgm", "qoi"
+};
+
+extern int IsPointInRect(sgp_rect r, int x, int y);
+
+static void igDrawPreviewCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
+    int cx = (int)cmd->ClipRect.x;
+    int cy = (int)cmd->ClipRect.y;
+    int cw = (int)(cmd->ClipRect.z - cmd->ClipRect.x);
+    int ch = (int)(cmd->ClipRect.w - cmd->ClipRect.y);
+    float iw = state.atlasW * state.previewScale;
+    float ih = state.atlasH * state.previewScale;
+    
+    sgp_scissor(cx, cy, iw, ih);
+    cx = cx ? cx : cw - iw;
+    cy = cy ? cy : ch - ih;
+    sgp_viewport(cx, cy, iw, ih);
+    sgp_set_image(0, state.preview);
+    sgp_draw_filled_rect(0, 0, iw, ih);
+    sgp_reset_image(0);
+    sgp_flush();
+}
+
+int ClearSkipFlag(ImGuiInputTextCallbackData* _) {
+    printf("test\n");
+    state.skipLoad = false;
+    return 1;
+}
 
 void DrawNewWindow(void) {
     if (!state.open)
@@ -19,23 +62,28 @@ void DrawNewWindow(void) {
     
     if (igBegin("New", &state.open, ImGuiWindowFlags_AlwaysAutoResize)) {
         igText("Map Size:");
-        static int gridW = 32, gridH = 32;
         static bool lockGrid = true;
-        igDragInt("Grid Width", &gridW, 1, 8, 1024, "%d", ImGuiSliderFlags_None);
-        igDragInt("Grid Height", lockGrid ? &gridW : &gridH, 1, 8, 1024, "%d", ImGuiSliderFlags_None);
-        gridW = CLAMP(gridW, 8, 1024);
-        gridH = CLAMP(gridH, 8, 1024);
+        igDragInt("Grid Width", &state.gridW, 1, 8, 1024, "%d", ImGuiSliderFlags_None);
+        igDragInt("Grid Height", lockGrid ? &state.gridW : &state.gridH, 1, 8, 1024, "%d", ImGuiSliderFlags_None);
+        state.gridW = CLAMP(state.gridW, 8, 1024);
+        state.gridH = CLAMP(state.gridH, 8, 1024);
         igCheckbox("Lock Grid", &lockGrid);
         if (lockGrid)
-            gridH = gridW;
+            state.gridH = state.gridW;
         
         igSeparator();
         igText("Atlas:");
         static char path[MAX_PATH];
-        igInputTextWithHint(" ", "texture path ...", path, MAX_PATH * sizeof(char), ImGuiInputTextFlags_None, NULL, NULL);
+        igInputTextWithHint(" ", "texture path ...", path, MAX_PATH * sizeof(char), ImGuiInputTextFlags_CallbackEdit, ClearSkipFlag, NULL);
         igSameLine(0, 0);
         if (igButton("Search", (ImVec2){0,0})) {
-            // TODO: Open file dialog, fill path buffer with result
+            osdialog_filters *filter = osdialog_filters_parse("Images:jpg,jpeg,png,bmp,psd,tga,hdr,pic,ppm,pgm,qoi");
+            char *filename = osdialog_file(OSDIALOG_OPEN, CurrentDirectory(), NULL, filter);
+            if (filename) {
+                memcpy(path, filename, MIN(strlen(filename), MAX_PATH) * sizeof(char));
+                free(filename);
+            }
+            osdialog_filters_free(filter);
         }
         bool validPath = false;
         if (path[0] != '\0') {
@@ -44,9 +92,6 @@ void DrawNewWindow(void) {
                 igText("ERROR! This file doesn't exist!");
                 igPopStyleColor(1);
             } else {
-                static const char *validExtensions[11] = {
-                    "jpg", "jpeg", "png", "bmp", "psd", "tga", "hdr", "pic", "ppm", "pgm", "qoi"
-                };
                 const char *ext = FileExt(path);
                 bool validExt = false;
                 if (!ext || ext[0] == '\0')
@@ -85,15 +130,53 @@ void DrawNewWindow(void) {
         };
         static int autotileSelected = TY_3X3_MINIMAL;
         igSliderInt("Mask Type", &autotileSelected, 0, 2, autotileSelected >= 0 && autotileSelected <= 2 ? autotileTypes[autotileSelected] : "???", ImGuiSliderFlags_None);
-        static int tileW = 8, tileH = 8;
         static bool lockTile = true;
-        igDragInt("Tile Width", &tileW, 1, 8, 64, "%d", ImGuiSliderFlags_None);
-        igDragInt("Tile Height", lockTile ? &tileW : &tileH, 1, 8, 64, "%d", ImGuiSliderFlags_None);
-        tileW = CLAMP(tileW, 8, 64);
-        tileH = CLAMP(tileH, 8, 64);
+        igDragInt("Tile Width", &state.tileW, 1, 8, 64, "%d", ImGuiSliderFlags_None);
+        igDragInt("Tile Height", lockTile ? &state.tileW : &state.tileH, 1, 8, 64, "%d", ImGuiSliderFlags_None);
+        state.tileW = CLAMP(state.tileW, 8, 64);
+        state.tileH = CLAMP(state.tileH, 8, 64);
         igCheckbox("Lock Tile", &lockTile);
         if (lockTile)
-            tileH = tileW;
+            state.tileH = state.tileW;
+        
+        if (validPath) {
+            if (sg_query_state(state.preview) != SG_RESOURCESTATE_VALID && !state.skipLoad) {
+                state.preview = sg_load_texture_path_ex(path, &state.atlasW, &state.atlasH);
+                state.skipLoad = sg_query_state(state.preview) != SG_RESOURCESTATE_VALID;
+            }
+        } else
+            sokol_helper_destroy(state.preview);
+        
+        if (state.skipLoad) {
+            igPushStyleColor_Vec4(ImGuiCol_Text, (ImVec4){1.f, 0.f, 0.f, 1.f});
+            igText("ERROR! Failed to load image from path!");
+            igPopStyleColor(1);
+        }
+        
+        if (sg_query_state(state.preview) == SG_RESOURCESTATE_VALID) {
+            ImVec2 size;
+            igGetWindowSize(&size);
+            float aspectRatio = size.x / (float)size.y;
+            float sizeX = size.x;
+            size.y = size.x * aspectRatio;
+            size.x = 0;
+            
+            igSeparator();
+            igText("Preview:");
+            igSameLine(0, 5);
+            if (igButton("+", (ImVec2){0,0}) &&
+                state.atlasW * state.previewScale < sizeX &&
+                state.atlasH * state.previewScale < size.y)
+                state.previewScale += .5f;
+            igSameLine(0, 5);
+            if (igButton("-", (ImVec2){0,0}))
+                state.previewScale = MAX(state.previewScale - .5f, .5f);
+            if (igBeginChild_Str("Preview", size, true, ImGuiWindowFlags_None)) {
+                ImDrawList* dl = igGetWindowDrawList();
+                ImDrawList_AddCallback(dl, igDrawPreviewCb, NULL);
+            }
+            igEndChild();
+        }
     }
     igEnd();
     

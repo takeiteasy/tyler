@@ -23,6 +23,7 @@
 #include "sokol_imgui.h"
 #include "ez/ezfs.h"
 #include "ty.h"
+#include "osdialog/osdialog.h"
 
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define MAX(A, B) ((A) > (B) ? (A) : (B))

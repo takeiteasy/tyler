@@ -9,6 +9,7 @@
 #define new_window_h
 
 #include "tyler.h"
+#include <stdlib.h>
 
 void DrawNewWindow(void);
 void ShowNewWindow(void);
