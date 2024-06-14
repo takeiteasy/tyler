@@ -47,7 +47,7 @@ static void igDrawPreviewCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
     sgp_set_image(0, state.preview);
     sgp_draw_filled_rect(0, 0, iw, ih);
     sgp_reset_image(0);
-    sgp_flush();
+    sgp_reset_viewport();
 }
 
 int ClearSkipFlag(ImGuiInputTextCallbackData* _) {

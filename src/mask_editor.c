@@ -113,8 +113,9 @@ static void igDrawMaskEditorCb(const ImDrawList* dl, const ImDrawCmd* cmd) {
                         sgp_draw_textured_rect(0, dst, src);
                     }
         }
+    
     sgp_reset_image(0);
-    sgp_flush();
+    sgp_reset_viewport();
 }
 
 void DrawMaskEditor(tyState *ty) {
@@ -152,7 +153,6 @@ void DrawMaskEditor(tyState *ty) {
                 }
             igEndChild();
         }
-        
         
         for (int i = 0; i < 256; i++)
             ty->map[i] = (tyPoint){-1,-1};

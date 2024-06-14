@@ -213,6 +213,7 @@ static void frame(void) {
     sg_begin_pass(&pass);
     sgp_flush();
     simgui_render();
+    sgp_flush();
     sgp_end();
     sg_end_pass();
     sg_commit();
