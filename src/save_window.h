@@ -9,6 +9,9 @@
 #define save_window_h
 
 #include "tyler.h"
+#include "map_editor.h"
+#include <stdlib.h>
+#include <string.h>
 
 void ShowSaveWindow(void);
 void DrawSaveWindow(void);
