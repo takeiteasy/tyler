@@ -2,6 +2,7 @@
 #include "mask_editor.h"
 #include "map_editor.h"
 #include "new_window.h"
+#include "save_window.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -98,7 +99,8 @@ static void frame(void) {
             if (igMenuItemEx("New", NULL, "Ctrl+N", false, true))
                 ShowNewWindow();
             if (igMenuItemEx("Open", NULL, "Ctrl+O", false, true)) {}
-            if (igMenuItemEx("Save", NULL, "Ctrl+S", false, true)) {}
+            if (igMenuItemEx("Save", NULL, "Ctrl+S", false, true))
+                ShowSaveWindow();
             igEndMenu();
         }
         igEndMenuBar();
@@ -125,6 +127,10 @@ static void frame(void) {
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_N))
         ShowNewWindow();
+    
+    if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
+        sapp_was_key_released(SAPP_KEYCODE_S))
+        ShowSaveWindow();
 
     if (SAPP_MODIFIER_CHECK_ONLY(SAPP_MODIFIER_CTRL) &&
         sapp_was_key_released(SAPP_KEYCODE_M))
@@ -179,30 +185,37 @@ static void frame(void) {
     }
     
     DrawNewWindow();
+    DrawSaveWindow();
+    
+    if (igIsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
+        goto SKIP;
     
     if (state.worldX >= 0 && state.worldY >= 0 && state.worldX < gridW && state.worldY < gridH) {
-        if (!igIsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
+        state.showTooltip = true;
+        if (!sapp_any_modifiers() && SAPP_ANY_BUTTONS_DOWN(SAPP_MOUSEBUTTON_LEFT, SAPP_MOUSEBUTTON_RIGHT))
             SetMap(state.worldX, state.worldY, sapp_is_button_down(SAPP_MOUSEBUTTON_LEFT));
-        
-        if (state.showTooltip && !igIsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
-            if (igBegin("tooltip", &state.showTooltip, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
-                tyNeighbours neighbours;
-                tyReadNeighbours(&state.ty, state.worldX, state.worldY, &neighbours);
-                uint8_t bitmask = tyBitmask(&neighbours, 0);
-                char buf[9];
-                memset(buf, 0, 9*sizeof(char));
-                for (int i = 0; i < 8; i++)
-                    buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
-                buf[8] = '\0';
-                if (igBeginTooltip()) {
-                    igText("tile: %d, %d - mask: %d,0x%x,0b%s\n", state.worldX, state.worldY, bitmask, bitmask, buf);
-                    igEndTooltip();
-                }
-                igEnd();
+    } else
+        state.showTooltip = false;
+    
+    if (state.showTooltip) {
+        if (igBegin("tooltip", &state.showTooltip, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
+            tyNeighbours neighbours;
+            tyReadNeighbours(&state.ty, state.worldX, state.worldY, &neighbours);
+            uint8_t bitmask = tyBitmask(&neighbours, 0);
+            char buf[9];
+            memset(buf, 0, 9*sizeof(char));
+            for (int i = 0; i < 8; i++)
+                buf[i] = !!((bitmask << i) & 0x80) ? 'F' : '0';
+            buf[8] = '\0';
+            if (igBeginTooltip()) {
+                igText("tile: %d, %d - mask: %d,0x%x,0b%s\n", state.worldX, state.worldY, bitmask, bitmask, buf);
+                igEndTooltip();
             }
+            igEnd();
         }
     }
     
+SKIP:
     sgp_reset_color();
     sg_pass pass = {.swapchain = sglue_swapchain()};
     sg_begin_pass(&pass);
