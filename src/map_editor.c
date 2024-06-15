@@ -136,13 +136,22 @@ void DrawMap(tyState *ty, int mouseX, int mouseY) {
         }
         igSeparator();
         igText("Map Size:");
+        static bool lockSize = true;
         igDragInt("Width", &state.tmpGridW, 1, 8, 512, "%d", ImGuiSliderFlags_None);
-        igDragInt("Height", &state.tmpGridH, 1, 8, 512, "%d", ImGuiSliderFlags_None);
+        igDragInt("Height", lockSize ? &state.tmpGridW : &state.tmpGridH, 1, 8, 512, "%d", ImGuiSliderFlags_None);
         state.tmpGridW = CLAMP(state.tmpGridW, 8, 512);
         state.tmpGridH = CLAMP(state.tmpGridH, 8, 512);
+        if (lockSize)
+            state.tmpGridH = state.tmpGridW;
+        igCheckbox("Lock Size", &lockSize);
+        
+        igSameLine(0, 5);
         if (igButton("Apply", (ImVec2){0,0}) && (state.tmpGridW != state.gridW || state.tmpGridH != state.gridH)) {
-            // TODO: Resize map
+            // TODO: Resize map using anchor without clearing the map data
+            // At the moment this will clear the map and resize from the top right
+            ResetMap(state.tmpGridW, state.tmpGridH, state.tileW, state.tileH);
         }
+        
         igSeparator();
         igAlignTextToFramePadding();
         igText("Clear map:");

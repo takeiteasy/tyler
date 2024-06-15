@@ -86,10 +86,10 @@ void DrawNewWindow(void) {
         igDragInt("Grid Height", lockGrid ? &state.gridW : &state.gridH, 1, 8, 1024, "%d", ImGuiSliderFlags_None);
         state.gridW = CLAMP(state.gridW, 8, 1024);
         state.gridH = CLAMP(state.gridH, 8, 1024);
-        igCheckbox("Lock Grid", &lockGrid);
         if (lockGrid)
             state.gridH = state.gridW;
-        
+        igCheckbox("Lock Grid", &lockGrid);
+
         igSeparator();
         igText("Atlas:");
         static char path[MAX_PATH];
