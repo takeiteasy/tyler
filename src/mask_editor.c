@@ -26,11 +26,6 @@ static struct {
     sg_image tmp;
 } state;
 
-
-tyNeighbours* GetBitmaskGrid(void) {
-    return state.grid;
-}
-
 static void ResetBitmaskGrid(void) {
     if (state.grid)
         free(state.grid);

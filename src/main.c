@@ -17,7 +17,7 @@ static struct {
     int mouseX, mouseY;
     int worldX, worldY;
     bool showCameraInfo;
-    bool showTooltip;
+    bool showTooltip, hideTooltip;
     bool showNewWindow;
     tyState ty;
 } state;
@@ -98,7 +98,7 @@ static void frame(void) {
         if (igBeginMenu("File", true)) {
             if (igMenuItemEx("New", NULL, "Ctrl+N", false, true))
                 ShowNewWindow();
-            if (igMenuItemEx("Open", NULL, "Ctrl+O", false, true)) {}
+            if (igMenuItemEx("Open", NULL, "Ctrl+O", false, false)) { /* TODO! */ }
             if (igMenuItemEx("Save", NULL, "Ctrl+S", false, true))
                 ShowSaveWindow();
             igEndMenu();
@@ -110,7 +110,7 @@ static void frame(void) {
             if (igMenuItem_BoolPtr("Map Editor", "Ctrl+E", MapEditorIsOpen(), true)) {}
             if (igMenuItem_BoolPtr("Mask Editor", "Ctrl+M", MaskEditorIsOpen(), true)) {}
             if (igMenuItem_BoolPtr("Camera Info", "Ctrl+I", &state.showCameraInfo, true)) {}
-            if (igMenuItem_BoolPtr("Show Tooltip", NULL, &state.showTooltip, true)) {}
+            if (igMenuItem_BoolPtr("Hide Tooltip", NULL, &state.hideTooltip, true)) {}
             if (igMenuItem_BoolPtr("Draw Grid", "Ctrl+G", MapDrawGrid(), true)) {}
             igEndMenu();
         }
@@ -185,7 +185,7 @@ static void frame(void) {
     }
     
     DrawNewWindow();
-    DrawSaveWindow();
+    DrawSaveWindow(&state.ty);
     
     if (igIsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
         goto SKIP;
@@ -197,7 +197,7 @@ static void frame(void) {
     } else
         state.showTooltip = false;
     
-    if (state.showTooltip) {
+    if (state.showTooltip && !state.hideTooltip) {
         if (igBegin("tooltip", &state.showTooltip, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
             tyNeighbours neighbours;
             tyReadNeighbours(&state.ty, state.worldX, state.worldY, &neighbours);

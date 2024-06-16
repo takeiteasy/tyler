@@ -14,6 +14,6 @@
 #include <string.h>
 
 void ShowSaveWindow(void);
-void DrawSaveWindow(void);
+void DrawSaveWindow(tyState *ty);
 
 #endif /* save_window_h */

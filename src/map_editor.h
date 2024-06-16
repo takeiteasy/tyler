@@ -26,6 +26,5 @@ bool* MapEditorIsOpen(void);
 void ResetMap(int gridW, int gridH, int tileW, int tileH);
 void ToggleMapEditor(void);
 void MapDims(int *gridW, int *gridH, int *tileW, int *tileH);
-tyNeighbours* GetBitmaskGrid(void);
 
 #endif /* map_editor_h */
