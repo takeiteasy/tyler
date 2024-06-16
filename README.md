@@ -3,21 +3,59 @@
 > [!WARNING]
 > Work in progress
 
-Tyler is a autotiled map editor + exporter based on Godot's autotiler. Tyler comes with a library to implement autotiling in your own game/engine.
+Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler comes with a small accompanying library [ty.h](/src/ty.h) that enables you to easily implement autotiling in your game/engine. See [examples/example.c](/examples/example.c) for an example of how to use Tyler + ty.h in your project.
+
+> [!NOTE]
+> Tyler is a tool I'm making for my own game, and it has been put together quickly over a week. Expect bugs and missing features!
 
 ## Features
 
-- [ ] 2x2 mode ```TODO```
-- [ ] 3x3 mode (implemented but needs adding to menus)
 - [X] 3x3 simplified mode
-- [ ] Modify tile size + map size ```TODO```
-- [ ] Export + import maps + autotile masks ```TODO```
+- [X] Export masks as JSON or C Header
 - [X] Accompanying library -- [ty.h](/src/ty.h)
-- [ ] Documentation + example for ```ty.h```
 
 ## Preview
 
 ![Screenshot](/assets/screenshot.png)
+
+## TODO
+
+- [ ] 2x2 mode
+- [ ] 3x3 mode (implemented but needs adding to menus)
+- [ ] Finish map editor window
+- [ ] Load + modify tile mask atlas from mask editor
+- [ ] Import masks + maps
+- [ ] Map editor select tiles (modify multiple tiles at once)
+- [ ] Modal tile selection + editing
+- [ ] Documentation + example for ty.h
+
+## Credits
+
+### Assets
+
+- Default 2x2 + 3x3 textures were taking from a video by [SlushyGames](https://www.youtube.com/watch?v=ZDghWCd_1k8).
+
+### Libraries
+
+- [floooh/sokol](https://github.com/floooh/sokol) (zlib/libpng)
+    - sokol_gfx.h
+    - sokol_app.h
+    - sokol_glue.h
+    - sokol_imgui.h
+    - sokol_log.h
+    - sokol_time.h
+- [edubart/sokol_gp](https://github.com/edubart/sokol_gp) (MIT-0)
+    - sokol_gp.h
+- [tsoding/jim](https://github.com/tsoding/jim) (MIT)
+    - jim.h
+- [ocornut/imgui](https://github.com/ocornut/imgui) (MIT)
+    - deps/imgui
+- [cimgui/cimgui](https://github.com/cimgui/cimgui) (MIT)
+    - cimgui.h
+    - cimgui.cpp
+- [AndrewBelt/osdialog](https://github.com/AndrewBelt/osdialog) (CC0-1.0)
+    - osdialog.h
+    - osdialog*.c
 
 ## LICENSE
 ```
