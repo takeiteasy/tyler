@@ -27,6 +27,8 @@ Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler co
 - [ ] Import masks + maps
 - [ ] Map editor select tiles (modify multiple tiles at once)
 - [ ] Modal tile selection + editing
+- [ ] Cross-platform build system
+- [ ] Documentation for tyler
 - [ ] Documentation + example for ty.h
 
 ## Credits
