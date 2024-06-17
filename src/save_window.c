@@ -54,7 +54,6 @@ static int ClearMapFlag(ImGuiInputTextCallbackData* _) {
 }
 
 static void OpenMapPath(char *dst) {
-    // TODO: Alternative formats for map? Non-priority
     osdialog_filters *filters = osdialog_filters_parse("Plain Text:txt");
     char *filename = osdialog_file(OSDIALOG_SAVE, CurrentDirectory(), NULL, filters);
     if (filename) {
@@ -87,9 +86,8 @@ static void MaskToJSON(Jim *jim, tyState *ty) {
     jim_object_end(jim);
 }
 
-// TODO: Change from bool to enum if adding more export types
-static void OpenMaskPath(char *dst, bool cheader) {
-    osdialog_filters *filters = osdialog_filters_parse(cheader ? "Header:h" : "JSON:json");
+static void OpenMaskPath(char *dst) {
+    osdialog_filters *filters = osdialog_filters_parse("JSON:json");
     char *filename = osdialog_file(OSDIALOG_SAVE, CurrentDirectory(), NULL, filters);
     if (filename) {
         memset(dst, 0, MAX_PATH * sizeof(char));
@@ -202,23 +200,11 @@ void DrawSaveWindow(tyState *ty) {
         igSeparator();
         igText("Mask:");
         if (igBeginChild_Str("Mask", (ImVec2){0,0}, ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-            static const char *exts[] = {"JSON", "C Header"};
-            static int exportType = 0;
-            if (igBeginCombo("Export As", exts[exportType], ImGuiComboFlags_None)) {
-                for (int i = 0; i < sizeof(exts) / sizeof(const char*); i++) {
-                    bool selected = i == exportType;
-                    if (igSelectable_Bool(exts[i], selected, ImGuiSelectableFlags_None, (ImVec2){0,0}))
-                        exportType = i;
-                    if (selected)
-                        igSetItemDefaultFocus();
-                }
-                igEndCombo();
-            }
             static char maskPath[MAX_PATH];
             igInputTextWithHint("Mask:", "...", maskPath, MAX_PATH * sizeof(char), ImGuiInputTextFlags_None, NULL, NULL);
             igSameLine(0, 5);
             if (igButton("Search", (ImVec2){0,0})) {
-                osdialog_filters *filters = osdialog_filters_parse(exportType ? "Header:h" : "JSON:json");
+                osdialog_filters *filters = osdialog_filters_parse("JSON:json");
                 char *filename = osdialog_file(OSDIALOG_SAVE, CurrentDirectory(), NULL, filters);
                 if (filename) {
                     memset(maskPath, 0, MAX_PATH * sizeof(char));
@@ -252,7 +238,7 @@ void DrawSaveWindow(tyState *ty) {
             }
             if (igButton("Export", (ImVec2){0,0})) {
                 if (maskPath[0] == '\0') {
-                    OpenMaskPath(maskPath, exportType);
+                    OpenMaskPath(maskPath);
                     goto FLEE;
                 }
                 if (!validPath)
@@ -271,16 +257,11 @@ void DrawSaveWindow(tyState *ty) {
                     goto FLEE;
                 }
                 
-                // TODO: Change this to a switch w/ enum if adding different export types
-                if (!exportType) { // JSON
-                    Jim jim = {
-                        .sink = fh,
-                        .write = (Jim_Write)fwrite
-                    };
-                    MaskToJSON(&jim, ty);
-                } else {
-                    // TODO: C Header export
-                }
+                Jim jim = {
+                    .sink = fh,
+                    .write = (Jim_Write)fwrite
+                };
+                MaskToJSON(&jim, ty);
                 
                 fclose(fh);
                 maskPath[0] = '\0';

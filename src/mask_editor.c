@@ -41,9 +41,9 @@ static void ResetBitmaskGrid(void) {
 }
 
 void InitMaskEditor(void) {
-    state.default_2x2.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_2x2.png", &state.default_2x2.width, &state.default_2x2.height);
-    state.default_3x3.texture = sg_load_texture_path_ex("/Users/george/git/tyler/assets/default_3x3.png", &state.default_3x3.width, &state.default_3x3.height);
-    state.cross = sg_load_texture_path("/Users/george/git/tyler/assets/x.png");
+    state.default_2x2.texture = sg_load_texture_path_ex("assets/default_2x2.png", &state.default_2x2.width, &state.default_2x2.height);
+    state.default_3x3.texture = sg_load_texture_path_ex("assets/default_3x3.png", &state.default_3x3.width, &state.default_3x3.height);
+    state.cross = sg_load_texture_path("assets/x.png");
     state.currentAtlas = &state.default_3x3;
     
     state.open = false;

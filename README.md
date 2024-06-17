@@ -3,7 +3,7 @@
 > [!WARNING]
 > Work in progress
 
-Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler comes with a small accompanying library [ty.h](/src/ty.h) that enables you to easily implement autotiling in your game/engine. See [examples/example.c](/examples/example.c) for an example of how to use Tyler + ty.h in your project.
+Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler comes with a small accompanying library [ty.h](/aux/ty.h) that enables you to easily implement autotiling in your game/engine. See [example.c](/aux/example.c) for an example of how to use Tyler + ty.h in your project.
 
 > [!NOTE]
 > Tyler is a tool I'm making for my own game, and it has been put together quickly over a week. Expect bugs and missing features!
@@ -11,8 +11,9 @@ Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler co
 ## Features
 
 - [X] 3x3 simplified mode
-- [X] Export masks as JSON or C Header
-- [X] Accompanying library -- [ty.h](/src/ty.h)
+- [X] Export masks as JSON
+- [X] Export maps as plain text
+- [X] Accompanying library -- [ty.h](/aux/ty.h)
 
 ## Preview
 
@@ -28,8 +29,9 @@ Tyler is autotiling tool + exporter based on Godot's autotiling system. Tyler co
 - [ ] Map editor select tiles (modify multiple tiles at once)
 - [ ] Modal tile selection + editing
 - [ ] Cross-platform build system
+- [ ] Web build (Emscripten)
 - [ ] Documentation for tyler
-- [ ] Documentation + example for ty.h
+- [ ] Documentation for ty.h
 
 ## Credits
 
